@@ -1,0 +1,70 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "agenttrail/golden_cases.schema.json",
+  "title": "AgentTrail golden dataset record",
+  "description": "One record of the synthetic golden dataset (data/golden_cases.jsonl). Synthetic evaluation data only — this does not represent real UK benefit policy. Every string is constrained by an approved enum, ID pattern, or version pattern; applicant inputs are enumerated only and cannot contain PII.",
+  "type": "object",
+  "required": ["case_id", "dataset_version", "input", "expected"],
+  "additionalProperties": false,
+  "properties": {
+    "case_id": {
+      "type": "string",
+      "pattern": "^SYN-[0-9]{3}$",
+      "description": "Synthetic case identifier. Never a real reference number."
+    },
+    "dataset_version": {
+      "type": "string",
+      "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$",
+      "description": "Semantic version of the ground-truth dataset this record belongs to."
+    },
+    "input": {
+      "type": "object",
+      "description": "Applicant snapshot. Exactly these three enumerated fields; no free-text or PII fields are permitted.",
+      "required": ["age_band", "income_band", "evidence_status"],
+      "additionalProperties": false,
+      "properties": {
+        "age_band": {
+          "type": "string",
+          "enum": ["18-24", "25-39", "40-64", "65-plus"],
+          "description": "Recorded but routing-inert in v1.0.0: age never affects routing, confidence, or reason."
+        },
+        "income_band": {
+          "type": "string",
+          "enum": ["low", "medium", "high"],
+          "description": "Routing-inert in v1.0.0: differentiates decide reason codes only."
+        },
+        "evidence_status": {
+          "type": "string",
+          "enum": ["complete", "partial", "missing"],
+          "description": "Sole driver of routing and confidence in v1.0.0."
+        }
+      }
+    },
+    "expected": {
+      "type": "object",
+      "description": "Ground-truth label derived deterministically from input by the synthetic labelling policy v1.0.0.",
+      "required": ["routing", "confidence_band", "reason_code"],
+      "additionalProperties": false,
+      "properties": {
+        "routing": {
+          "type": "string",
+          "enum": ["decide", "escalate"]
+        },
+        "confidence_band": {
+          "type": "string",
+          "enum": ["high", "medium", "low"]
+        },
+        "reason_code": {
+          "type": "string",
+          "enum": [
+            "EVIDENCE_COMPLETE_LOW_INCOME",
+            "EVIDENCE_COMPLETE_MEDIUM_INCOME",
+            "EVIDENCE_COMPLETE_HIGH_INCOME",
+            "EVIDENCE_PARTIAL",
+            "EVIDENCE_MISSING"
+          ]
+        }
+      }
+    }
+  }
+}
