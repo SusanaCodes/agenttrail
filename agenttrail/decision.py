@@ -28,6 +28,10 @@ INPUT_ENUMS = {
 
 DECISIONS = ["decide", "escalate"]
 
+# Version of the prompt contract: system instruction, tool schema, forced
+# tool choice, and rationale templates below. Bump when any of them change.
+PROMPT_VERSION = "1.0.0"
+
 # v1 threshold: confidence strictly below this always escalates.
 CONFIDENCE_THRESHOLD = 0.70
 
@@ -128,6 +132,20 @@ def validate_case(case):
     return {field: case[field] for field in sorted(INPUT_ENUMS)}
 
 
+def resolve_model_id(model_id=None):
+    """Resolve the effective Bedrock model ID.
+
+    Falls back to the BEDROCK_MODEL_ID environment variable; raises
+    ValueError when neither is provided. Never returns None or "".
+    """
+    model_id = model_id or os.environ.get("BEDROCK_MODEL_ID")
+    if not model_id:
+        raise ValueError(
+            "model_id not provided and BEDROCK_MODEL_ID is not set"
+        )
+    return model_id
+
+
 def _extract_tool_input(response):
     """Extract and structurally validate the forced tool call."""
     try:
@@ -199,6 +217,11 @@ def decide_case(
 ):
     """Decide or escalate one structured case with a single Bedrock call.
 
+    This is the unaudited low-level decision primitive, retained for
+    Ticket 2 compatibility. Production callers requiring the one-audit-
+    record-per-decision guarantee must use
+    ``agenttrail.audit.decide_case_audited``, which wraps this function.
+
     ``bedrock_client`` is an injected bedrock-runtime client (never created
     at import time). ``model_id`` defaults to the BEDROCK_MODEL_ID
     environment variable. Returns {"decision", "confidence", "rationale"}.
@@ -219,11 +242,7 @@ def decide_case(
             "value in [0.0, 1.0]"
         )
 
-    model_id = model_id or os.environ.get("BEDROCK_MODEL_ID")
-    if not model_id:
-        raise ValueError(
-            "model_id not provided and BEDROCK_MODEL_ID is not set"
-        )
+    model_id = resolve_model_id(model_id)
 
     response = bedrock_client.converse(
         modelId=model_id,

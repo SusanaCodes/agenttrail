@@ -1,2 +1,7 @@
 __pycache__/
 *.pyc
+
+# Runtime append-only audit trails — never committed.
+# Schemas (data/*.schema.json), fixtures and tests stay version-controlled.
+audit/
+*.audit.jsonl

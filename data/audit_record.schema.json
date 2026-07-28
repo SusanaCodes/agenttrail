@@ -1,0 +1,74 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "agenttrail/audit_record.schema.json",
+  "title": "AgentTrail audit trail record",
+  "description": "One append-only JSONL audit record per completed audited decision. Structured audit artefact designed to support Article 12 traceability. Shared applicant fields reuse the exact enums of data/golden_cases.schema.json; the record additionally carries operational fields (decision outcome, confidence, templated rationale, model_id, prompt_version, timestamp) and is therefore NOT the golden-case schema. Every string is constrained by an enum, a bounded identifier pattern, or the canonical timestamp format; no free-text or nested metadata fields are permitted.",
+  "type": "object",
+  "required": [
+    "case_ref",
+    "age_band",
+    "income_band",
+    "evidence_status",
+    "decision",
+    "confidence",
+    "rationale",
+    "model_id",
+    "prompt_version",
+    "timestamp"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "case_ref": {
+      "type": "string",
+      "pattern": "^SYN-[0-9]{3}$",
+      "description": "Bounded opaque case reference; same convention as the golden dataset case_id. Never a real reference number, never prose."
+    },
+    "age_band": {
+      "type": "string",
+      "enum": ["18-24", "25-39", "40-64", "65-plus"],
+      "description": "Enumerated applicant band; identical enum to golden input.age_band."
+    },
+    "income_band": {
+      "type": "string",
+      "enum": ["low", "medium", "high"],
+      "description": "Enumerated applicant band; identical enum to golden input.income_band."
+    },
+    "evidence_status": {
+      "type": "string",
+      "enum": ["complete", "partial", "missing"],
+      "description": "Enumerated evidence state; identical enum to golden input.evidence_status."
+    },
+    "decision": {
+      "type": "string",
+      "enum": ["decide", "escalate"],
+      "description": "Final routing after the confidence threshold; identical enum to golden expected.routing."
+    },
+    "confidence": {
+      "type": "number",
+      "minimum": 0.0,
+      "maximum": 1.0,
+      "description": "Model-reported confidence, finite, in [0.0, 1.0]. Uncalibrated in v1; not a statistical probability."
+    },
+    "rationale": {
+      "type": "string",
+      "maxLength": 64,
+      "pattern": "^(Decided|Escalated): (complete|partial|missing) for (low|medium|high) applicant$",
+      "description": "Rendering of an allow-listed local template filled only with the enumerated case fields above. Never model free text; the application additionally enforces exact cross-field agreement with decision, evidence_status and income_band."
+    },
+    "model_id": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:/-]{0,127}$",
+      "description": "Effective Bedrock model or inference-profile ID actually sent to converse(). Bounded identifier; no whitespace."
+    },
+    "prompt_version": {
+      "type": "string",
+      "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$",
+      "description": "Semantic version of the prompt contract (system instruction, tool schema, templates); same version convention as golden dataset_version."
+    },
+    "timestamp": {
+      "type": "string",
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$",
+      "description": "Generated internally at record build time. Canonical RFC 3339 UTC, second precision, trailing Z. Never caller-supplied in production."
+    }
+  }
+}
