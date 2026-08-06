@@ -1,0 +1,53 @@
+# CI gate: block deploy on escalation-rate regression (Ticket 6).
+#
+# Runs the full unit-test suite and then the production CI-gate CLI,
+# entirely offline: the project is standard-library-only, every model
+# response comes from committed recorded fixtures, and no AWS
+# credentials, region, or network access is needed or requested.
+#
+# `workflow_call` makes the gate reusable: a future deployment workflow
+# must call this workflow as a job and declare its deployment job with
+# `needs:` on that gate job. No deployment workflow exists yet, so
+# nothing is deployed from here — this workflow only reports the gate.
+#
+# This YAML alone cannot block merges. A GitHub branch protection rule
+# or ruleset on `main` must additionally require the `evaluation-gate`
+# status check (see docs/ci-gate.md).
+
+name: ci-gate
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+  workflow_call: {}
+
+permissions:
+  contents: read
+
+jobs:
+  evaluation-gate:
+    name: evaluation-gate
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      PYTHONDONTWRITEBYTECODE: "1"
+    steps:
+      - name: Check out repository
+        # actions/checkout v4.2.2
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+
+      - name: Set up Python 3.12
+        # actions/setup-python v5.3.0
+        uses: actions/setup-python@0b93645e9fea7318ecaed2b359559ac225c90a2b
+        with:
+          python-version: "3.12"
+
+      - name: Run unit tests
+        run: python3 -m unittest discover -s tests -v
+
+      - name: Run CI gate
+        run: python3 -m agenttrail.ci_gate
