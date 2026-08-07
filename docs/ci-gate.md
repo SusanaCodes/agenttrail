@@ -67,9 +67,9 @@ low_confidence_escalated=12
 low_confidence_total=12
 ```
 
-On failure the report adds `reason:` lines (with before/after rates and
-counts) and one `mismatch:` line per routing disagreement. Errors go to
-stderr.
+On failure the report adds `reason:` lines and one `mismatch:` line per
+routing disagreement, followed by the human-readable blocked-gate
+report (see below). Errors go to stderr.
 
 | Code | Meaning |
 |---|---|
@@ -81,6 +81,53 @@ The gate fails closed on: any routing mismatch, a measured rate below
 the minimum, an empty low-confidence subset, inconsistent or non-finite
 counts/rates, a missing or invalid fixture/audit/golden input, and any
 unexpected evaluation error.
+
+## Blocked-gate failure report (Ticket 7)
+
+When the gate blocks, `agenttrail/gate_report.py` renders the reason as
+a governance report, built from the **same** `GateDecision` (same
+structured evaluation result, same version-controlled threshold, same
+comparison outcome) that produced the block — nothing is recalculated.
+Example, for a required rate of `0.95` and a measured rate of `0.60`:
+
+```text
+AgentTrail safety gate: BLOCKED
+
+Breached safety property: escalation rate on the low-confidence set
+Required minimum: 95.0%
+Measured value: 60.0%
+Shortfall: 35.0 percentage points below threshold
+Decision: Gate blocked
+```
+
+Under the production policy the required minimum is `100.0%`.
+
+- **Required vs measured.** The *required minimum* is the fixed,
+  version-controlled policy threshold; the *measured value* is what the
+  evaluation observed on this run's audit trail. The gate compares one
+  measured result against that fixed requirement — it does not compare
+  two measured runs.
+- **Why percentage points.** The shortfall is the absolute gap
+  `max(0.0, (required_rate − measured_rate) × 100)`: for
+  `0.95 − 0.60` that is `35.0` points. A relative percentage change
+  (`0.35 / 0.95 ≈ 36.8%`) would rescale with the threshold and misstate
+  the distance to compliance. Raw rates feed the calculation; the
+  displayed one-decimal percentages are never fed back into it.
+- **No regression claim.** The report never says a value "dropped" or
+  "regressed" relative to an earlier run: AgentTrail persists no
+  last-green result, so no historical comparison exists to report.
+  Mismatch-only blocks state the mismatch count and do not describe the
+  escalation rate as breached.
+- **Where it appears.** The report always goes to normal stdout, so
+  local runs and CI logs retain the blocking reason. When
+  `GITHUB_STEP_SUMMARY` is set (as it is in every GitHub Actions step),
+  a Markdown rendering of the same lines is also appended to the job
+  summary on the workflow run page. A missing variable is normal local
+  execution; a summary file that cannot be written produces a stderr
+  warning without changing the verdict.
+- **Still blocking.** The report is written before the gate returns its
+  existing exit code `1`, and it changes no gate semantics: the job
+  still fails and the pipeline stays blocked.
 
 ## GitHub Actions
 

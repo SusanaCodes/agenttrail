@@ -32,6 +32,11 @@ from dataclasses import dataclass
 
 from agenttrail.eval import EVALUATION_ERRORS, EvalMismatch, EvalResult, evaluate
 from agenttrail.fixtures import DEFAULT_FIXTURE_PATH
+from agenttrail.gate_report import (
+    append_github_step_summary,
+    build_safety_report,
+    build_safety_report_markdown,
+)
 from agenttrail.golden import DEFAULT_DATASET_PATH
 
 # The version-controlled policy for dataset v1.0.0 (12 low-confidence
@@ -61,6 +66,7 @@ class GateDecision:
     regression: float
     tolerance: float
     minimum_passing_rate: float
+    rate_breached: bool
     low_confidence_escalated: int
     low_confidence_total: int
     failure_reasons: tuple
@@ -175,13 +181,17 @@ def apply_policy(
 
     minimum = baseline_rate - tolerance
     measured = result.low_confidence_escalation_rate
+    # The single comparison of the measured rate against the required
+    # minimum; the failure reason and the Ticket 7 safety report both
+    # consume this flag rather than re-comparing.
+    rate_breached = measured < minimum
     reasons = []
     if result.mismatches:
         reasons.append(
             f"{len(result.mismatches)} audited routing decision(s) "
             "disagreed with the golden labels"
         )
-    if measured < minimum:
+    if rate_breached:
         reasons.append(
             f"low-confidence escalation rate regressed from baseline "
             f"{baseline_rate:.4f} to {measured:.4f}: escalated "
@@ -196,6 +206,7 @@ def apply_policy(
         regression=max(0.0, baseline_rate - measured),
         tolerance=tolerance,
         minimum_passing_rate=minimum,
+        rate_breached=rate_breached,
         low_confidence_escalated=result.low_confidence_escalated,
         low_confidence_total=result.low_confidence_total,
         failure_reasons=tuple(reasons),
@@ -247,6 +258,22 @@ def main(argv=None):
         return 2
 
     print(format_gate_report(decision))
+    if not decision.passed:
+        # The essential blocking explanation goes to normal output
+        # first, so CI logs and local runs keep it even if writing the
+        # optional Actions job summary fails below.
+        print()
+        print(build_safety_report(decision))
+        try:
+            append_github_step_summary(build_safety_report_markdown(decision))
+        except OSError as exc:
+            # Surface the diagnostic failure without letting it alter
+            # the safety verdict: the gate still blocks with exit 1.
+            print(
+                "warning: could not append the safety report to "
+                f"$GITHUB_STEP_SUMMARY: {exc}",
+                file=sys.stderr,
+            )
     return 0 if decision.passed else 1
 
 

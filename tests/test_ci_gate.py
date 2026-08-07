@@ -195,7 +195,13 @@ class TestGateOnCommittedBaseline(unittest.TestCase):
 class TestCli(unittest.TestCase):
     def run_cli(self, argv):
         stdout, stderr = StringIO(), StringIO()
-        with mock.patch.object(sys, "stdout", stdout), \
+        # Scrub GITHUB_STEP_SUMMARY so a test run inside a real Actions
+        # step never appends to the job's actual summary file.
+        scrubbed = {
+            k: v for k, v in os.environ.items() if k != "GITHUB_STEP_SUMMARY"
+        }
+        with mock.patch.dict(os.environ, scrubbed, clear=True), \
+                mock.patch.object(sys, "stdout", stdout), \
                 mock.patch.object(sys, "stderr", stderr):
             code = gatemod.main(argv)
         return code, stdout.getvalue(), stderr.getvalue()
