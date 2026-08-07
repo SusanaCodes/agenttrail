@@ -53,3 +53,12 @@ jobs:
 
       - name: Run CI gate
         run: python3 -m agenttrail.ci_gate
+
+      # Ticket 8 safety gate: deterministic backstop scan of the
+      # committed record data for NI numbers, UK postcodes, and NHS
+      # numbers. Offline, standard library only. Findings are reported
+      # as file:line + category with a [REDACTED] marker — the matched
+      # value never appears in CI logs. A detection exits 1 and fails
+      # this job; an unreadable target exits 2 and also fails it.
+      - name: Run redaction gate
+        run: python3 -m agenttrail.redaction_gate

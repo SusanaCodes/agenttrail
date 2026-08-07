@@ -139,7 +139,9 @@ Under the production policy the required minimum is `100.0%`.
 
 The job checks out the repository, sets up Python 3.12, runs the full
 `unittest` suite, then runs `python3 -m agenttrail.ci_gate` as a
-separate step. It installs nothing (standard-library-only project),
+separate step, followed by the Ticket 8 redaction gate
+(`python3 -m agenttrail.redaction_gate`, see docs/redaction-gate.md)
+as its own step. It installs nothing (standard-library-only project),
 uses `permissions: contents: read`, has a 10-minute timeout, requests
 no secrets or AWS access, and uses no caches. Third-party actions are
 pinned to full commit SHAs with the release version in a comment.

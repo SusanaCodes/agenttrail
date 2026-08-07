@@ -58,3 +58,10 @@ may not.
 
 Runtime trails (`audit/`, `*.audit.jsonl`) are git-ignored; the schema and
 tests are version-controlled.
+
+This allow-listed schema is the primary privacy control. A second,
+deterministic backstop — the Ticket 8 redaction gate
+(docs/redaction-gate.md) — additionally scans committed record data for
+three structured UK identifiers (NI numbers, UK postcodes, NHS numbers)
+in case one ever lands in a record despite the schema. It is a narrow
+backstop, not a guarantee that records contain no personal data.
