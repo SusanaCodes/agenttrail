@@ -58,7 +58,7 @@ class TestCommittedDataPasses(unittest.TestCase):
         self.assertEqual(code, 0)
         self.assertEqual(err, "")
         self.assertTrue(out.startswith("REDACTION GATE: PASS\n"))
-        self.assertIn("scanned_files=2", out)
+        self.assertIn("scanned_files=3", out)
         self.assertIn("findings=0", out)
 
     def test_output_is_byte_identical_across_runs(self):

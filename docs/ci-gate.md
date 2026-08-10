@@ -55,10 +55,14 @@ into the pure `apply_policy()` function only.
 PYTHONDONTWRITEBYTECODE=1 python3 -m agenttrail.ci_gate
 ```
 
-Prints a deterministic report to stdout:
+`--agent-version {v1,v2}` (default `v1`) selects which registered
+agent version to evaluate; `v2` is the intentionally unsafe demo
+version and blocks the gate (see `docs/demo-scenario.md`). The policy
+itself is never selectable. Prints a deterministic report to stdout:
 
 ```text
 CI GATE: PASS
+agent_version=v1
 baseline_rate=1.0000
 measured_rate=1.0000
 regression=0.0000
@@ -136,21 +140,32 @@ Under the production policy the required minimum is `100.0%`.
 - pull requests targeting `main`
 - pushes to `main`
 - `workflow_call`, so other workflows can require the gate
+- `workflow_dispatch`, with an `agent_version` choice input (`v1`
+  default, `v2` for the intentionally red demo run — see
+  `docs/demo-scenario.md`); every other trigger always evaluates `v1`
 
 The job checks out the repository, sets up Python 3.12, runs the full
-`unittest` suite, then runs `python3 -m agenttrail.ci_gate` as a
-separate step, followed by the Ticket 8 redaction gate
+`unittest` suite, then the Ticket 8 redaction gate
 (`python3 -m agenttrail.redaction_gate`, see docs/redaction-gate.md)
-as its own step. It installs nothing (standard-library-only project),
-uses `permissions: contents: read`, has a 10-minute timeout, requests
-no secrets or AWS access, and uses no caches. Third-party actions are
-pinned to full commit SHAs with the release version in a comment.
+as its own step, and finally
+`python3 -m agenttrail.ci_gate --agent-version "$AGENT_VERSION"` —
+the version reaches the shell only through an environment variable
+whose value comes from the closed choice list. It installs nothing
+(standard-library-only project), uses `permissions: contents: read`,
+has a 10-minute timeout, requests no secrets or AWS access, and uses
+no caches. Third-party actions are pinned to full commit SHAs with the
+release version in a comment.
+
+A minimal no-op `deployment-demo` job declares
+`needs: evaluation-gate`: it deploys nothing, exists solely to make
+the "deploy blocked" property visible, and is skipped whenever the
+gate fails (as in a `v2` demo run).
 
 ## Wiring a future deployment workflow
 
-No deployment workflow exists yet, so **nothing is currently blocked
-from deploying by this YAML — there is no deploy to block.** When one
-is added, it must reuse this gate rather than duplicating it:
+Beyond the no-op `deployment-demo` job above, no real deployment
+workflow exists yet. When one is added, it must reuse this gate rather
+than duplicating it:
 
 ```yaml
 jobs:
@@ -216,8 +231,10 @@ should be rejected in review.
 ## Offline and deterministic
 
 CI makes no network calls and needs no AWS credentials: every model
-response is resolved from `fixtures/bedrock-converse-v1.jsonl` by
-request fingerprint, with no live fallback. The test suite runs the
+response is resolved from the selected agent version's fixture set
+(`fixtures/bedrock-converse-v1.jsonl` by default; see
+`docs/demo-scenario.md` for the v2 demo) by request fingerprint, with
+no live fallback. The test suite runs the
 same evaluation with sockets patched to fail and `AWS_*` scrubbed.
 Identical runs produce byte-identical gate output — no timestamps,
 temporary paths, or unordered mappings appear in it. Fixtures prove the

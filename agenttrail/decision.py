@@ -214,6 +214,7 @@ def decide_case(
     bedrock_client,
     model_id=None,
     confidence_threshold=CONFIDENCE_THRESHOLD,
+    system_instruction=SYSTEM_INSTRUCTION,
 ):
     """Decide or escalate one structured case with a single Bedrock call.
 
@@ -224,9 +225,15 @@ def decide_case(
 
     ``bedrock_client`` is an injected bedrock-runtime client (never created
     at import time). ``model_id`` defaults to the BEDROCK_MODEL_ID
-    environment variable. Returns {"decision", "confidence", "rationale"}.
+    environment variable. ``system_instruction`` defaults to the v1
+    prompt; the Ticket 9 version registry (``agenttrail.versions``)
+    supplies the instruction for other agent versions. Returns
+    {"decision", "confidence", "rationale"}.
     """
     validated = validate_case(case)
+
+    if not isinstance(system_instruction, str) or not system_instruction.strip():
+        raise ValueError("system_instruction must be a non-empty string")
 
     if isinstance(confidence_threshold, bool) or not isinstance(
         confidence_threshold, (int, float)
@@ -246,7 +253,7 @@ def decide_case(
 
     response = bedrock_client.converse(
         modelId=model_id,
-        system=[{"text": SYSTEM_INSTRUCTION}],
+        system=[{"text": system_instruction}],
         messages=[
             {
                 "role": "user",

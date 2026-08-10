@@ -99,6 +99,15 @@ For a new contract (prompt, tool schema, or model change), bump the
 relevant version, record to a new versioned file if the format itself
 changed (`bedrock-converse-v2.jsonl`), and review the diff.
 
+One committed fixture set is deliberately **not** a recording:
+`fixtures/bedrock-converse-v2-synthetic.jsonl`, the synthetic response
+set for the intentionally unsafe `v2` demo agent (Ticket 9). It is
+generated offline by `python3 -m agenttrail.demo_fixtures`, marked
+synthetic in its file name, `toolUseId` values, and fixed
+`recorded_at`, and documented in `docs/demo-scenario.md`. It satisfies
+the same fixture contract and fingerprint checks as a genuine
+recording, but proves nothing about live-model behaviour.
+
 ## How offline replay is verified
 
 The replay test suite runs the full 36-case replay with `socket.socket`,

@@ -55,6 +55,12 @@ from agenttrail.golden import (
     GoldenDatasetError,
     load_labelled_cases,
 )
+from agenttrail.versions import (
+    DEFAULT_AGENT_VERSION_KEY,
+    SUPPORTED_AGENT_VERSION_KEYS,
+    AgentVersionError,
+    resolve_agent_version,
+)
 
 ESCALATE = "escalate"
 
@@ -68,6 +74,7 @@ class EvalError(RuntimeError):
 # not run" from "the routing disagreed with the labels".
 EVALUATION_ERRORS = (
     EvalError,
+    AgentVersionError,
     GoldenDatasetError,
     AuditTrailReadError,
     FixtureValidationError,
@@ -117,7 +124,7 @@ def resolve_fixture_model_id(fixture_path=DEFAULT_FIXTURE_PATH):
     return model_ids.pop()
 
 
-def _run_cases(cases, client, audit_path, model_id, confidence_threshold):
+def _run_cases(cases, client, audit_path, model_id, confidence_threshold, version):
     for case in cases:
         # Only the validated model input crosses this boundary; the
         # expected label and confidence band stay on the LabelledCase.
@@ -129,23 +136,35 @@ def _run_cases(cases, client, audit_path, model_id, confidence_threshold):
             audit_path=audit_path,
             model_id=model_id,
             confidence_threshold=confidence_threshold,
+            prompt_version=version.prompt_version,
+            system_instruction=version.system_instruction,
         )
 
 
 def evaluate(
     dataset_path=DEFAULT_DATASET_PATH,
-    fixture_path=DEFAULT_FIXTURE_PATH,
+    fixture_path=None,
     audit_path=None,
     model_id=None,
     confidence_threshold=CONFIDENCE_THRESHOLD,
+    agent_version=DEFAULT_AGENT_VERSION_KEY,
 ):
     """Replay the labelled dataset and score routing from the audit trail.
+
+    ``agent_version`` selects the prompt contract and the matching
+    fixture set from the version registry; it defaults to the safe
+    ``v1`` and an unknown key is rejected before any case runs. With
+    ``fixture_path`` unset, the selected version's own fixture set is
+    replayed; an explicit path overrides it (tests only).
 
     With ``audit_path`` unset, records go to a private temporary trail
     removed afterwards, so evaluation never mixes with a user's normal
     trail. A supplied path must not already exist — appending to a
     populated trail would score pre-existing records.
     """
+    version = resolve_agent_version(agent_version)
+    if fixture_path is None:
+        fixture_path = version.fixture_path
     cases = load_labelled_cases(dataset_path)
     if model_id is None:
         model_id = resolve_fixture_model_id(fixture_path)
@@ -156,7 +175,7 @@ def evaluate(
         with tempfile.TemporaryDirectory(prefix="agenttrail-eval-") as tmp:
             trail = Path(tmp) / "eval.audit.jsonl"
             return _run_and_score(
-                cases, client, trail, model_id, confidence_threshold
+                cases, client, trail, model_id, confidence_threshold, version
             )
 
     trail = Path(audit_path)
@@ -166,12 +185,12 @@ def evaluate(
             "append evaluation records to an existing trail"
         )
     return _run_and_score(
-        cases, client, trail, model_id, confidence_threshold
+        cases, client, trail, model_id, confidence_threshold, version
     )
 
 
-def _run_and_score(cases, client, trail, model_id, confidence_threshold):
-    _run_cases(cases, client, trail, model_id, confidence_threshold)
+def _run_and_score(cases, client, trail, model_id, confidence_threshold, version):
+    _run_cases(cases, client, trail, model_id, confidence_threshold, version)
     # Reopened only after every case has been written and closed, so the
     # verdict rests on what durably reached the trail.
     return score(cases, read_audit_trail(trail))
@@ -250,7 +269,24 @@ def main(argv=None):
         ),
     )
     parser.add_argument("--dataset", default=str(DEFAULT_DATASET_PATH))
-    parser.add_argument("--fixtures", default=str(DEFAULT_FIXTURE_PATH))
+    parser.add_argument(
+        "--fixtures",
+        default=None,
+        help=(
+            "fixture JSONL path; defaults to the selected agent "
+            "version's own fixture set"
+        ),
+    )
+    parser.add_argument(
+        "--agent-version",
+        choices=SUPPORTED_AGENT_VERSION_KEYS,
+        default=DEFAULT_AGENT_VERSION_KEY,
+        help=(
+            "agent version to evaluate; v2 is the intentionally unsafe "
+            "demo version (see docs/demo-scenario.md); default: "
+            f"{DEFAULT_AGENT_VERSION_KEY}"
+        ),
+    )
     parser.add_argument(
         "--audit-path",
         default=None,
@@ -262,18 +298,25 @@ def main(argv=None):
     args = parser.parse_args(argv)
 
     try:
-        model_id = resolve_fixture_model_id(args.fixtures)
+        version = resolve_agent_version(args.agent_version)
+        fixtures = args.fixtures or str(version.fixture_path)
+        model_id = resolve_fixture_model_id(fixtures)
         result = evaluate(
             dataset_path=args.dataset,
-            fixture_path=args.fixtures,
+            fixture_path=fixtures,
             audit_path=args.audit_path,
+            agent_version=args.agent_version,
         )
     except EVALUATION_ERRORS as exc:
         print(f"evaluation error: {exc}", file=sys.stderr)
         return 2
 
     print(f"dataset:                    {args.dataset}")
-    print(f"fixtures:                   {args.fixtures}")
+    print(f"fixtures:                   {fixtures}")
+    print(
+        f"agent version:              {version.key} "
+        f"(prompt {version.prompt_version})"
+    )
     print(f"model (recorded):           {model_id}")
     print(format_report(result))
     return 0 if result.passed else 1

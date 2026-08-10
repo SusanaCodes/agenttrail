@@ -31,13 +31,18 @@ import sys
 from dataclasses import dataclass
 
 from agenttrail.eval import EVALUATION_ERRORS, EvalMismatch, EvalResult, evaluate
-from agenttrail.fixtures import DEFAULT_FIXTURE_PATH
 from agenttrail.gate_report import (
     append_github_step_summary,
     build_safety_report,
     build_safety_report_markdown,
 )
 from agenttrail.golden import DEFAULT_DATASET_PATH
+from agenttrail.versions import (
+    AGENT_VERSIONS,
+    DEFAULT_AGENT_VERSION_KEY,
+    SUPPORTED_AGENT_VERSION_KEYS,
+    resolve_agent_version,
+)
 
 # The version-controlled policy for dataset v1.0.0 (12 low-confidence
 # cases, all labelled escalate). Zero tolerance is intentional: the
@@ -71,6 +76,9 @@ class GateDecision:
     low_confidence_total: int
     failure_reasons: tuple
     mismatches: tuple
+    # Which registered agent version the evaluation ran; recorded so the
+    # gate report and the Ticket 7 safety report can name it.
+    agent_version: str = DEFAULT_AGENT_VERSION_KEY
 
 
 def _require(condition, message):
@@ -169,15 +177,22 @@ def apply_policy(
     result,
     baseline_rate=BASELINE_LOW_CONFIDENCE_ESCALATION_RATE,
     tolerance=MAX_PERMITTED_REGRESSION,
+    agent_version=DEFAULT_AGENT_VERSION_KEY,
 ):
     """Pure comparison of an EvalResult against the gate policy.
 
     Raises GatePolicyError when the inputs cannot be trusted; otherwise
     returns a GateDecision. The policy parameters exist only so tests
     can exercise boundaries — production callers use the defaults.
+    ``agent_version`` is provenance for the report, never policy: the
+    same baseline, tolerance, and comparison apply to every version.
     """
     _validate_policy(baseline_rate, tolerance)
     _validate_result(result)
+    _require(
+        agent_version in AGENT_VERSIONS,
+        f"agent_version {agent_version!r} is not a registered version",
+    )
 
     minimum = baseline_rate - tolerance
     measured = result.low_confidence_escalation_rate
@@ -211,6 +226,7 @@ def apply_policy(
         low_confidence_total=result.low_confidence_total,
         failure_reasons=tuple(reasons),
         mismatches=result.mismatches,
+        agent_version=agent_version,
     )
 
 
@@ -218,6 +234,7 @@ def format_gate_report(decision):
     """Deterministic plain-text report built only from controlled values."""
     lines = [
         f"CI GATE: {'PASS' if decision.passed else 'FAIL'}",
+        f"agent_version={decision.agent_version}",
         f"baseline_rate={decision.baseline_rate:.4f}",
         f"measured_rate={decision.measured_rate:.4f}",
         f"regression={decision.regression:.4f}",
@@ -245,14 +262,35 @@ def main(argv=None):
         ),
     )
     parser.add_argument("--dataset", default=str(DEFAULT_DATASET_PATH))
-    parser.add_argument("--fixtures", default=str(DEFAULT_FIXTURE_PATH))
+    parser.add_argument(
+        "--fixtures",
+        default=None,
+        help=(
+            "fixture JSONL path; defaults to the selected agent "
+            "version's own fixture set"
+        ),
+    )
+    parser.add_argument(
+        "--agent-version",
+        choices=SUPPORTED_AGENT_VERSION_KEYS,
+        default=DEFAULT_AGENT_VERSION_KEY,
+        help=(
+            "agent version to evaluate; v2 is the intentionally unsafe "
+            "demo version and blocks the gate (see "
+            "docs/demo-scenario.md); default: "
+            f"{DEFAULT_AGENT_VERSION_KEY}"
+        ),
+    )
     args = parser.parse_args(argv)
 
     try:
+        version = resolve_agent_version(args.agent_version)
         result = evaluate(
-            dataset_path=args.dataset, fixture_path=args.fixtures
+            dataset_path=args.dataset,
+            fixture_path=args.fixtures or version.fixture_path,
+            agent_version=version.key,
         )
-        decision = apply_policy(result)
+        decision = apply_policy(result, agent_version=version.key)
     except GATE_ERRORS as exc:
         print(f"gate error: {exc}", file=sys.stderr)
         return 2

@@ -150,7 +150,9 @@ dataclasses, so the later CI gate can consume the verdict directly
 without parsing prose.
 
 Optional arguments: `dataset_path`, `fixture_path`, `audit_path`,
-`model_id`, `confidence_threshold`.
+`model_id`, `confidence_threshold`, `agent_version` (default `"v1"`;
+selects the prompt contract and matching fixture set from
+`agenttrail.versions` — see `docs/demo-scenario.md`).
 
 Evaluation records never mix with a normal audit trail. With
 `audit_path` unset they go to a private temporary trail that is removed
@@ -180,8 +182,11 @@ Prints a deterministic summary ending in `PASS` or `FAIL`. Exit codes:
 | `1` | FAIL — at least one routing mismatch |
 | `2` | evaluation error — no trustworthy verdict could be produced |
 
-Options: `--dataset`, `--fixtures`, `--audit-path` (must not exist;
-defaults to a discarded temporary trail).
+Options: `--dataset`, `--fixtures` (defaults to the selected agent
+version's fixture set), `--agent-version {v1,v2}` (default `v1`; `v2`
+is the intentionally unsafe demo version, `docs/demo-scenario.md`),
+`--audit-path` (must not exist; defaults to a discarded temporary
+trail).
 
 Needs no AWS credentials, no region, and no network access.
 

@@ -39,6 +39,7 @@ from agenttrail.decision import (
     INPUT_ENUMS,
     PROMPT_VERSION,
     RATIONALE_TEMPLATES,
+    SYSTEM_INSTRUCTION,
     TEMPLATE_FOR_DECISION,
     decide_case,
     resolve_model_id,
@@ -252,6 +253,8 @@ def decide_case_audited(
     audit_path,
     model_id=None,
     confidence_threshold=CONFIDENCE_THRESHOLD,
+    prompt_version=PROMPT_VERSION,
+    system_instruction=SYSTEM_INSTRUCTION,
     clock=_utc_now,
 ):
     """Decide one case with exactly one Bedrock call and one audit line.
@@ -259,6 +262,11 @@ def decide_case_audited(
     Orchestration: validate inputs, resolve the effective model ID once,
     call ``decide_case`` exactly once, build and validate the audit
     record, append it, and only then return the decision result.
+
+    ``prompt_version`` and ``system_instruction`` default to the v1
+    prompt contract; the Ticket 9 version registry supplies the pair
+    for other agent versions, so the trail always records the prompt
+    version that actually produced the decision.
 
     Auditing is not optional on this path. If validation, the Bedrock
     call, or model-response validation fails, zero records are written.
@@ -286,6 +294,7 @@ def decide_case_audited(
         bedrock_client,
         model_id=effective_model_id,
         confidence_threshold=confidence_threshold,
+        system_instruction=system_instruction,
     )
 
     record = build_audit_record(
@@ -293,6 +302,7 @@ def decide_case_audited(
         validated,
         result,
         effective_model_id,
+        prompt_version=prompt_version,
         clock=clock,
     )
     append_audit_record(audit_path, record)
