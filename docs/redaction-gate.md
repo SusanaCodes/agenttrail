@@ -62,7 +62,9 @@ python3 -m agenttrail.redaction_gate PATH...    # explicit files
 ```
 
 The default targets are the repository's committed record data:
-`data/golden_cases.jsonl` and `fixtures/bedrock-converse-v1.jsonl`.
+`data/golden_cases.jsonl` and every registered agent version's fixture
+set (`fixtures/bedrock-converse-v1.jsonl` and the synthetic demo set
+`fixtures/bedrock-converse-v2-synthetic.jsonl`).
 Runtime audit trails (`audit/`, `*.audit.jsonl`) are git-ignored and
 never committed; pass a trail path explicitly to scan one.
 

@@ -52,14 +52,17 @@ import sys
 from dataclasses import dataclass
 from pathlib import Path
 
-from agenttrail.fixtures import DEFAULT_FIXTURE_PATH
 from agenttrail.golden import DEFAULT_DATASET_PATH
+from agenttrail.versions import AGENT_VERSIONS
 
-# The repository's committed record data: the golden dataset and the
-# recorded Bedrock fixtures. Runtime audit trails (audit/,
-# *.audit.jsonl) are git-ignored and never committed, so they are not
-# default targets; pass their paths explicitly to scan one.
-DEFAULT_SCAN_TARGETS = (DEFAULT_DATASET_PATH, DEFAULT_FIXTURE_PATH)
+# The repository's committed record data: the golden dataset and every
+# registered agent version's Bedrock fixture set (the genuine v1
+# recording and the synthetic v2 demo set alike). Runtime audit trails
+# (audit/, *.audit.jsonl) are git-ignored and never committed, so they
+# are not default targets; pass their paths explicitly to scan one.
+DEFAULT_SCAN_TARGETS = (DEFAULT_DATASET_PATH,) + tuple(
+    version.fixture_path for version in AGENT_VERSIONS.values()
+)
 
 REDACTED_MARKER = "[REDACTED]"
 
@@ -208,8 +211,8 @@ def main(argv=None):
         nargs="*",
         help=(
             "files to scan; defaults to the committed record data "
-            "(data/golden_cases.jsonl and fixtures/bedrock-converse-"
-            "v1.jsonl)"
+            "(data/golden_cases.jsonl and every registered agent "
+            "version's fixture set under fixtures/)"
         ),
     )
     args = parser.parse_args(argv)

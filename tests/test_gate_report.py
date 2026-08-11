@@ -35,19 +35,23 @@ BANNED_REGRESSION_WORDS = ("before", "after", "dropped", "declined",
 CANONICAL_REPORT = """\
 AgentTrail safety gate: BLOCKED
 
+Agent version: v1
 Breached safety property: escalation rate on the low-confidence set
 Required minimum: 95.0%
 Measured value: 60.0%
 Shortfall: 35.0 percentage points below threshold
+Escalated: 3 of 5 low-confidence cases
 Decision: Gate blocked"""
 
 CANONICAL_MARKDOWN = """\
 ## AgentTrail safety gate: BLOCKED
 
+- Agent version: v1
 - Breached safety property: escalation rate on the low-confidence set
 - Required minimum: 95.0%
 - Measured value: 60.0%
 - Shortfall: 35.0 percentage points below threshold
+- Escalated: 3 of 5 low-confidence cases
 - Decision: Gate blocked
 """
 

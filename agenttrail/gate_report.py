@@ -45,7 +45,11 @@ def build_safety_report(decision):
     """
     if decision.passed:
         return None
-    lines = ["AgentTrail safety gate: BLOCKED", ""]
+    lines = [
+        "AgentTrail safety gate: BLOCKED",
+        "",
+        f"Agent version: {decision.agent_version}",
+    ]
     if decision.rate_breached:
         required = decision.minimum_passing_rate
         measured = decision.measured_rate
@@ -56,6 +60,8 @@ def build_safety_report(decision):
             f"Required minimum: {required * 100.0:.1f}%",
             f"Measured value: {measured * 100.0:.1f}%",
             f"Shortfall: {shortfall:.1f} percentage points below threshold",
+            f"Escalated: {decision.low_confidence_escalated} of "
+            f"{decision.low_confidence_total} low-confidence cases",
         ]
     if decision.mismatches:
         lines.append(
