@@ -17,13 +17,16 @@ from unittest import mock
 from agenttrail.audit import (
     AUDIT_FIELDS,
     CASE_REF_PATTERN,
+    DECISION_ID_PATTERN,
     MODEL_ID_PATTERN,
+    OPTIONAL_AUDIT_FIELDS,
     PROMPT_VERSION_PATTERN,
     TIMESTAMP_PATTERN,
     AuditValidationError,
     AuditWriteError,
     append_audit_record,
     build_audit_record,
+    new_decision_id,
     validate_audit_record,
 )
 from agenttrail.decision import (
@@ -39,6 +42,7 @@ GOLDEN_SCHEMA_PATH = REPO_ROOT / "data" / "golden_cases.schema.json"
 AUDIT_SCHEMA_PATH = REPO_ROOT / "data" / "audit_record.schema.json"
 
 MODEL_ID = "eu.anthropic.claude-sonnet-4-20250514-v1:0"
+FIXED_DECISION_ID = "00000000-0000-4000-8000-000000000001"
 
 VALID_CASE = {
     "age_band": "18-24",
@@ -59,6 +63,7 @@ def fixed_clock():
 
 def valid_record(**overrides):
     record = {
+        "decision_id": FIXED_DECISION_ID,
         "case_ref": "SYN-001",
         "age_band": "18-24",
         "income_band": "low",
@@ -77,9 +82,33 @@ def valid_record(**overrides):
 class TestBuildAuditRecord(unittest.TestCase):
     def test_builds_every_field_deterministically(self):
         record = build_audit_record(
-            "SYN-001", VALID_CASE, VALID_RESULT, MODEL_ID, clock=fixed_clock
+            "SYN-001", VALID_CASE, VALID_RESULT, MODEL_ID,
+            clock=fixed_clock, id_generator=lambda: FIXED_DECISION_ID,
         )
         self.assertEqual(record, valid_record())
+
+    def test_default_id_generator_produces_valid_unique_ids(self):
+        records = [
+            build_audit_record(
+                "SYN-001", VALID_CASE, VALID_RESULT, MODEL_ID,
+                clock=fixed_clock,
+            )
+            for _ in range(2)
+        ]
+        ids = [r["decision_id"] for r in records]
+        self.assertRegex(ids[0], DECISION_ID_PATTERN)
+        self.assertRegex(ids[1], DECISION_ID_PATTERN)
+        self.assertNotEqual(ids[0], ids[1])
+        self.assertRegex(new_decision_id(), DECISION_ID_PATTERN)
+
+    def test_id_generator_returning_invalid_value_is_rejected(self):
+        for bad in ("not-a-uuid", "", None, 42,
+                    "AAAAAAAA-AAAA-4AAA-8AAA-AAAAAAAAAAAA"):
+            with self.assertRaises(AuditValidationError, msg=bad):
+                build_audit_record(
+                    "SYN-001", VALID_CASE, VALID_RESULT, MODEL_ID,
+                    clock=fixed_clock, id_generator=lambda: bad,
+                )
 
     def test_non_utc_clock_is_normalised_to_utc(self):
         plus_two = timezone(timedelta(hours=2))
@@ -128,6 +157,25 @@ class TestValidateAuditRecord(unittest.TestCase):
     def test_valid_record_passes(self):
         record = valid_record()
         self.assertIs(validate_audit_record(record), record)
+
+    def test_legacy_record_without_decision_id_is_valid(self):
+        record = valid_record()
+        del record["decision_id"]
+        self.assertIs(validate_audit_record(record), record)
+
+    def test_invalid_decision_ids_are_rejected(self):
+        for decision_id in (
+            "", "not-a-uuid",
+            # Uppercase form of a valid ID: only lowercase is canonical.
+            "AAAAAAAA-AAAA-4AAA-8AAA-AAAAAAAAAAAA",
+            f" {FIXED_DECISION_ID}", f"{FIXED_DECISION_ID}\n",
+            # Valid UUID shape but not version 4 / variant 1.
+            "00000000-0000-1000-8000-000000000001",
+            "00000000-0000-4000-c000-000000000001",
+            None, 123,
+        ):
+            with self.assertRaises(AuditValidationError, msg=decision_id):
+                validate_audit_record(valid_record(decision_id=decision_id))
 
     def test_every_missing_field_is_rejected(self):
         for field in AUDIT_FIELDS:
@@ -230,9 +278,18 @@ class TestAuditSchemaDrift(unittest.TestCase):
         with open(AUDIT_SCHEMA_PATH, encoding="utf-8") as f:
             cls.audit = json.load(f)
 
-    def test_shape_is_closed_and_all_fields_required(self):
+    def test_shape_is_closed_and_matches_the_code_field_sets(self):
+        # Required fields are exactly the code's AUDIT_FIELDS; the only
+        # additional property is the optional (legacy-compatible)
+        # decision_id, and nothing else is admitted.
         self.assertEqual(set(self.audit["required"]), set(AUDIT_FIELDS))
-        self.assertEqual(set(self.audit["properties"]), set(AUDIT_FIELDS))
+        self.assertEqual(
+            set(self.audit["properties"]),
+            set(AUDIT_FIELDS) | set(OPTIONAL_AUDIT_FIELDS),
+        )
+        self.assertFalse(
+            set(self.audit["required"]) & set(OPTIONAL_AUDIT_FIELDS)
+        )
         self.assertFalse(self.audit["additionalProperties"])
 
     def test_shared_enums_match_golden_schema_exactly(self):
@@ -262,6 +319,9 @@ class TestAuditSchemaDrift(unittest.TestCase):
     def test_schema_matches_code_constants(self):
         props = self.audit["properties"]
         self.assertEqual(props["case_ref"]["pattern"], CASE_REF_PATTERN.pattern)
+        self.assertEqual(
+            props["decision_id"]["pattern"], DECISION_ID_PATTERN.pattern
+        )
         self.assertEqual(props["model_id"]["pattern"], MODEL_ID_PATTERN.pattern)
         self.assertEqual(
             props["prompt_version"]["pattern"], PROMPT_VERSION_PATTERN.pattern
@@ -352,6 +412,26 @@ class TestAppendAuditRecord(unittest.TestCase):
                        {}, None):
             with self.assertRaises(AuditValidationError, msg=record):
                 append_audit_record(self.path, record)
+        self.assertFalse(self.path.exists())
+
+    def test_record_without_decision_id_is_never_appended(self):
+        # Read-side validation tolerates legacy records, but the writer
+        # must not create new ones: write integrity requires the ID.
+        record = valid_record()
+        del record["decision_id"]
+        self.assertIs(validate_audit_record(record), record)
+        with self.assertRaises(AuditValidationError) as ctx:
+            append_audit_record(self.path, record)
+        self.assertIn("decision_id", str(ctx.exception))
+        self.assertFalse(self.path.exists())
+
+    def test_record_with_invalid_decision_id_is_never_appended(self):
+        for decision_id in ("not-a-uuid", "", None,
+                            "AAAAAAAA-AAAA-4AAA-8AAA-AAAAAAAAAAAA"):
+            with self.assertRaises(AuditValidationError, msg=decision_id):
+                append_audit_record(
+                    self.path, valid_record(decision_id=decision_id)
+                )
         self.assertFalse(self.path.exists())
 
     def test_new_file_is_created_with_restrictive_permissions(self):
