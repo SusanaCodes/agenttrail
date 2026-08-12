@@ -5,6 +5,11 @@ JSON object on one line to an append-only JSONL file. This record is the
 structured audit artefact designed to support Article 12 traceability; it
 is consumed by the later evaluation and redaction-gate tickets.
 
+Each new record carries a ``decision_id`` — a random, non-derived UUIDv4
+generated once at record build time — so a stored record can later be
+looked up by ID (``agenttrail.record_view``). Records written before the
+identifier was introduced lack it and remain valid trail members.
+
 PII is excluded by construction, not by convention:
 
 * Records are built from an explicit allow-list of fields; the original
@@ -31,6 +36,7 @@ import json
 import math
 import os
 import re
+import uuid
 from datetime import datetime, timezone
 
 from agenttrail.decision import (
@@ -57,6 +63,13 @@ MODEL_ID_PATTERN = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._:/-]{0,127}$")
 # Same convention as the golden dataset_version.
 PROMPT_VERSION_PATTERN = re.compile(r"^[0-9]+\.[0-9]+\.[0-9]+$")
 
+# Canonical lowercase UUIDv4, as produced by new_decision_id(). Random
+# and never derived from case data, so the identifier itself can carry
+# no PII and never changes once written.
+DECISION_ID_PATTERN = re.compile(
+    r"^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+)
+
 # Single canonical RFC 3339 format: UTC, second precision, trailing "Z".
 TIMESTAMP_FORMAT = "%Y-%m-%dT%H:%M:%SZ"
 TIMESTAMP_PATTERN = re.compile(
@@ -65,7 +78,8 @@ TIMESTAMP_PATTERN = re.compile(
 
 RESULT_FIELDS = ("decision", "confidence", "rationale")
 
-# The complete, closed audit record shape. Exactly these fields, no more.
+# Every required audit field. The closed record shape is exactly these
+# plus OPTIONAL_AUDIT_FIELDS below; nothing else is ever accepted.
 AUDIT_FIELDS = (
     "case_ref",
     "age_band",
@@ -79,6 +93,11 @@ AUDIT_FIELDS = (
     "timestamp",
 )
 
+# Optional by history, not by policy: decision_id was added in Ticket 11
+# and every record built here since then carries one, but records
+# written earlier are still valid trail members and must stay readable.
+OPTIONAL_AUDIT_FIELDS = ("decision_id",)
+
 
 class AuditValidationError(ValueError):
     """An audit record (or a field destined for one) failed validation."""
@@ -90,6 +109,16 @@ class AuditWriteError(RuntimeError):
 
 def _utc_now():
     return datetime.now(timezone.utc)
+
+
+def new_decision_id():
+    """Random decision identifier: canonical lowercase UUIDv4.
+
+    Generated exactly once when a record is built and stored in the
+    record; never derived from case data, the timestamp, or the record's
+    position in the trail, and never regenerated during lookup.
+    """
+    return str(uuid.uuid4())
 
 
 def _render_timestamp(clock):
@@ -117,19 +146,24 @@ def validate_audit_record(record):
     Enforces the exact closed field set, all enums and identifier
     patterns, confidence bounds, the canonical timestamp format, and
     that the rationale is exactly the allow-listed template rendering
-    for the record's own decision and case fields.
+    for the record's own decision and case fields. ``decision_id`` is
+    validated when present; legacy records without one remain valid.
     """
     if not isinstance(record, dict):
         raise AuditValidationError("audit record must be a mapping")
     missing = sorted(set(AUDIT_FIELDS) - set(record))
     if missing:
         raise AuditValidationError(f"audit record missing fields: {missing}")
-    extra = sorted(set(record) - set(AUDIT_FIELDS))
+    extra = sorted(
+        set(record) - set(AUDIT_FIELDS) - set(OPTIONAL_AUDIT_FIELDS)
+    )
     if extra:
         raise AuditValidationError(
             f"audit record has unexpected fields: {extra}"
         )
 
+    if "decision_id" in record:
+        _require_identifier(record, "decision_id", DECISION_ID_PATTERN)
     _require_identifier(record, "case_ref", CASE_REF_PATTERN)
     _require_identifier(record, "model_id", MODEL_ID_PATTERN)
     _require_identifier(record, "prompt_version", PROMPT_VERSION_PATTERN)
@@ -180,14 +214,16 @@ def build_audit_record(
     model_id,
     prompt_version=PROMPT_VERSION,
     clock=_utc_now,
+    id_generator=new_decision_id,
 ):
     """Build a validated audit record from allow-listed fields only.
 
     ``case`` is the structured case input and ``result`` the mapping
     returned by ``decide_case``. Both are validated; unknown fields in
-    either are rejected. The timestamp is generated internally from
-    ``clock`` (UTC by default; injectable for deterministic tests) —
-    callers cannot supply a timestamp value.
+    either are rejected. The timestamp and decision_id are generated
+    internally from ``clock`` and ``id_generator`` (UTC now and a random
+    UUIDv4 by default; both injectable for deterministic tests) —
+    callers cannot supply either value directly.
     """
     validated = validate_case(case)
     if not isinstance(result, dict) or set(result) != set(RESULT_FIELDS):
@@ -195,6 +231,7 @@ def build_audit_record(
             f"result must contain exactly the fields {sorted(RESULT_FIELDS)}"
         )
     record = {
+        "decision_id": id_generator(),
         "case_ref": case_ref,
         "age_band": validated["age_band"],
         "income_band": validated["income_band"],
@@ -212,7 +249,11 @@ def build_audit_record(
 def append_audit_record(audit_path, record):
     """Append one validated record to the JSONL trail; append-only.
 
-    The record is fully validated before the file is opened. Encoding is
+    The record is fully validated before the file is opened, and — in
+    addition to the read-side validation, which tolerates legacy
+    records — a new record is refused unless it carries a decision_id.
+    The writer never generates one: build_audit_record is the only
+    place an ID is created, exactly once per record. Encoding is
     deterministic (sorted keys, compact separators, ASCII-only), one JSON
     object on one line ending in exactly one newline, written with a
     single append-mode write. The file is opened with O_APPEND only —
@@ -221,6 +262,14 @@ def append_audit_record(audit_path, record):
     raise AuditWriteError; there are no retries.
     """
     validate_audit_record(record)
+    # Write-side integrity: legacy records without a decision_id stay
+    # readable, but every newly appended record must carry one (already
+    # pattern-validated above when present).
+    if "decision_id" not in record:
+        raise AuditValidationError(
+            "new audit records must carry a decision_id; only records "
+            "written before its introduction may lack one"
+        )
     line = json.dumps(
         record, sort_keys=True, ensure_ascii=True, separators=(",", ":")
     )
@@ -256,6 +305,7 @@ def decide_case_audited(
     prompt_version=PROMPT_VERSION,
     system_instruction=SYSTEM_INSTRUCTION,
     clock=_utc_now,
+    id_generator=new_decision_id,
 ):
     """Decide one case with exactly one Bedrock call and one audit line.
 
@@ -304,6 +354,7 @@ def decide_case_audited(
         effective_model_id,
         prompt_version=prompt_version,
         clock=clock,
+        id_generator=id_generator,
     )
     append_audit_record(audit_path, record)
     return result

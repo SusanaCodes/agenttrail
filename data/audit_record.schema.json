@@ -18,6 +18,11 @@
   ],
   "additionalProperties": false,
   "properties": {
+    "decision_id": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$",
+      "description": "Stable per-record decision identifier: a canonical lowercase UUIDv4 generated once at record build time, never derived from case data and never regenerated. Present on every record written since Ticket 11 — the writer refuses to append a new record without one; omitted from required only so earlier records that predate it remain readable. Legacy records without it stay valid on the read side and can never be matched by an ID lookup."
+    },
     "case_ref": {
       "type": "string",
       "pattern": "^SYN-[0-9]{3}$",

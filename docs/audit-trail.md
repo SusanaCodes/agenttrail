@@ -17,6 +17,7 @@ compatibility — are unaudited.
 
 | Field | Constraint |
 |---|---|
+| `decision_id` | canonical lowercase UUIDv4; random, generated once at record build time |
 | `case_ref` | `^SYN-[0-9]{3}$` (golden `case_id` convention) |
 | `age_band` | `18-24`, `25-39`, `40-64`, `65-plus` |
 | `income_band` | `low`, `medium`, `high` |
@@ -28,8 +29,15 @@ compatibility — are unaudited.
 | `prompt_version` | `^[0-9]+\.[0-9]+\.[0-9]+$` |
 | `timestamp` | RFC 3339 UTC, second precision, trailing `Z`; generated internally |
 
-All fields are required, `additionalProperties` is `false`, and there are
-no free-text or nested metadata fields. Records are built from an explicit
+All fields except `decision_id` are required, `additionalProperties` is
+`false`, and there are no free-text or nested metadata fields.
+`decision_id` (Ticket 11) is written on every new record and enables the
+stored-record lookup (docs/record-view.md). It is optional on the read
+side only, because records written before its introduction lack it —
+such legacy records remain valid and are never rewritten. On the write
+side it is mandatory: `append_audit_record` refuses to append any new
+record without a valid `decision_id`, and only `build_audit_record`
+generates one, exactly once per record. Records are built from an explicit
 allow-list — the case object is never serialised wholesale — so PII is
 excluded by construction. Shared fields reuse the golden dataset enums
 verbatim; a test (`tests/test_audit.py`) fails on any drift between the

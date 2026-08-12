@@ -14,6 +14,8 @@ from unittest import mock
 
 from agenttrail.audit import (
     AUDIT_FIELDS,
+    DECISION_ID_PATTERN,
+    OPTIONAL_AUDIT_FIELDS,
     AuditValidationError,
     AuditWriteError,
     decide_case_audited,
@@ -34,6 +36,7 @@ VALID_CASE = {
 MODEL_ID = "eu.anthropic.claude-sonnet-4-20250514-v1:0"
 CASE_REF = "SYN-001"
 FIXED_TIMESTAMP = "2026-07-27T12:00:00Z"
+FIXED_DECISION_ID = "00000000-0000-4000-8000-000000000001"
 
 
 def fixed_clock():
@@ -98,7 +101,9 @@ class TestDecideCaseAudited(unittest.TestCase):
         return [json.loads(line) for line in content.splitlines()]
 
     def test_success_returns_result_and_appends_exactly_one_record(self):
-        result, _ = self.run_audited()
+        result, _ = self.run_audited(
+            id_generator=lambda: FIXED_DECISION_ID
+        )
         self.assertEqual(result, {
             "decision": "decide",
             "confidence": 0.92,
@@ -107,6 +112,7 @@ class TestDecideCaseAudited(unittest.TestCase):
         records = self.read_records()
         self.assertEqual(len(records), 1)
         self.assertEqual(records[0], {
+            "decision_id": FIXED_DECISION_ID,
             "case_ref": CASE_REF,
             "age_band": "18-24",
             "income_band": "low",
@@ -122,10 +128,20 @@ class TestDecideCaseAudited(unittest.TestCase):
     def test_every_required_field_is_present_and_populated(self):
         self.run_audited()
         record = self.read_records()[0]
-        self.assertEqual(set(record), set(AUDIT_FIELDS))
-        for field in AUDIT_FIELDS:
+        self.assertEqual(
+            set(record), set(AUDIT_FIELDS) | set(OPTIONAL_AUDIT_FIELDS)
+        )
+        for field in record:
             self.assertIsNotNone(record[field], field)
             self.assertNotEqual(record[field], "", field)
+
+    def test_each_invocation_gets_a_fresh_valid_decision_id(self):
+        self.run_audited()
+        self.run_audited(case_ref="SYN-002")
+        ids = [r["decision_id"] for r in self.read_records()]
+        for decision_id in ids:
+            self.assertRegex(decision_id, DECISION_ID_PATTERN)
+        self.assertEqual(len(set(ids)), 2)
 
     def test_two_invocations_append_two_lines_first_unchanged(self):
         self.run_audited()

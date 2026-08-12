@@ -22,12 +22,17 @@ class AuditTrailReadError(ValueError):
     """A persisted audit trail could not be read as trustworthy evidence."""
 
 
-def read_audit_trail(audit_path):
-    """Reopen a trail and return every record, in file order, validated."""
+def iter_audit_records(audit_path):
+    """Yield each record in file order, validated; fail closed per line.
+
+    Streaming counterpart of ``read_audit_trail`` for consumers (such
+    as the Ticket 11 record view) that need one record without holding
+    the whole trail in memory. The trail is opened read-only and never
+    rewritten.
+    """
     audit_path = Path(audit_path)
     if not audit_path.is_file():
         raise AuditTrailReadError(f"audit trail was not created: {audit_path}")
-    records = []
     with open(audit_path, encoding="utf-8") as f:
         for line_no, line in enumerate(f, start=1):
             where = f"{audit_path}:{line_no}"
@@ -47,8 +52,12 @@ def read_audit_trail(audit_path):
                 raise AuditTrailReadError(
                     f"{where}: invalid audit record: {exc}"
                 ) from exc
-            records.append(record)
-    return records
+            yield record
+
+
+def read_audit_trail(audit_path):
+    """Reopen a trail and return every record, in file order, validated."""
+    return list(iter_audit_records(audit_path))
 
 
 def index_records_by_case(records, expected_case_ids):
