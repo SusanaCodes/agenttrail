@@ -36,8 +36,8 @@ EvalResult                     PASS / FAIL, counts, mismatches, escalation rate
 ## Why the verdict comes from the audit trail
 
 The harness deliberately discards what `decide_case_audited` returns and
-rereads the persisted records instead. A decision that was not durably
-audited must not be able to pass an evaluation — if the record is
+rereads the persisted records instead. A decision that was not
+successfully written to the trail must not be able to pass an evaluation — if the record is
 missing, duplicated, malformed, or names a case that was never
 evaluated, that is an evaluation failure, not a detail to be smoothed
 over. Reading the trail is what makes the audit artefact load-bearing
@@ -198,7 +198,11 @@ python3 -m unittest discover -s tests -v
 
 ## Not in this ticket
 
-This ticket does **not** add the GitLab CI safety gate. Nothing here is
-wired into CI, and no pipeline configuration was added. `EvalResult` is
-structured specifically so that the later CI gate ticket can consume the
-verdict without parsing this output.
+This ticket did **not** add the CI safety gate. Nothing here was wired
+into CI, and no pipeline configuration was added. `EvalResult` is
+structured specifically so that the later CI gate ticket could consume
+the verdict without parsing this output. (When this document was
+written the gate was planned for GitLab CI; it was ultimately delivered
+on GitHub Actions — the platform changed, the gate's safety property
+did not. See the [CI gate](ci-gate.md) and
+[ADR-010](decision-log.md#adr-010--github-actions-instead-of-gitlab-ci).)
