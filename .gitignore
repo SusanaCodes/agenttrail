@@ -1,7 +1,17 @@
 __pycache__/
 *.pyc
 
+# macOS Finder metadata — anywhere in the repository.
+.DS_Store
+
 # Runtime append-only audit trails — never committed.
 # Schemas (data/*.schema.json), fixtures and tests stay version-controlled.
 audit/
 *.audit.jsonl
+
+# Showcase media and temporary render output (Ticket 13) — the
+# repository has no binary-asset/LFS policy, so recordings stay out of
+# Git; see showcase/fallback-recording-checklist.md for where the
+# verified recording is held.
+showcase/recordings/
+showcase/render-check/
