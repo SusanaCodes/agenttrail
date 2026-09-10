@@ -46,3 +46,9 @@ Per-topic references:
 | Demo scenario: v1 green, v2 red | [docs/demo-scenario.md](docs/demo-scenario.md) |
 | Policy replay (implemented — what would change under a proposed policy) | [docs/policy-replay.md](docs/policy-replay.md) |
 | Record lookup (stored-record view, not replay) | [docs/record-view.md](docs/record-view.md) |
+
+## Licence
+
+MIT — see [LICENSE](LICENSE). The pre-publication safety review that
+preceded making this repository public is recorded in
+[docs/pre-publication-safety-review.md](docs/pre-publication-safety-review.md).

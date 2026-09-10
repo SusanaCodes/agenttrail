@@ -120,8 +120,9 @@ Imperfect take? Record again. A clean single take beats an edited one.
 
 ## Verification record
 
-To be completed by Susana after a genuine recording and playback —
-leave blank until then (do not fabricate):
+To be completed by the presenter after a genuine recording and playback —
+leave blank until then (do not fabricate). **This file is public:** no
+private paths, hostnames, or account details in any field.
 
 | Field | Record |
 |---|---|
@@ -131,5 +132,5 @@ leave blank until then (do not fabricate):
 | SHA-256 checksum | _(to be completed)_ |
 | Primary copy location (no private details) | _(to be completed)_ |
 | Second copy location (no private details) | _(to be completed)_ |
-| Full playback verified (date, machine) | _(to be completed)_ |
+| Full playback verified (date, generic machine description) | _(to be completed)_ |
 | Time from Dock/Finder to full-screen playback | _(to be completed)_ |

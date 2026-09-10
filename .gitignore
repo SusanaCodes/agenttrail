@@ -15,3 +15,9 @@ audit/
 # verified recording is held.
 showcase/recordings/
 showcase/render-check/
+
+# Local-only tooling state — never committed. Both were previously kept
+# out only by a machine-local global ignore (pre-publication review,
+# September 2026).
+.venv/
+.claude/

@@ -22,6 +22,10 @@ Rules for this log:
   for Susana to complete after the run. Do not fabricate dates,
   durations, results, playback checks, or witnesses.
 
+- **This file is public.** Record no witness personal names, machine
+  names, private paths, or account details — use roles ("a
+  colleague") and generic descriptions ("presentation laptop").
+
 Add further entries by copying the template at the bottom.
 
 ---
@@ -32,7 +36,7 @@ Add further entries by copying the template at the bottom.
 |---|---|
 | Date and time (start) | _(to be completed)_ |
 | Git commit / working-tree state (`git rev-parse --short HEAD`, `git status --short`) | _(to be completed)_ |
-| Machine used | _(to be completed)_ |
+| Machine used (generic description, no hostname) | _(to be completed)_ |
 | Total duration (target 1:50, hard stop 2:00) | _(to be completed)_ |
 | v1 gate result (expect `CI GATE: PASS`, exit 0) | _(to be completed)_ |
 | v2 gate result and exit status (expect `CI GATE: FAIL`, exit 1 — intentional) | _(to be completed)_ |
@@ -41,7 +45,7 @@ Add further entries by copying the template at the bottom.
 | Corrective action taken (what will change before the next run) | _(to be completed)_ |
 | Fallback video playback result (played end to end? duration ~45–50 s? from which copy?) | _(to be completed)_ |
 | Final verdict: **ready / not ready** | _(to be completed)_ |
-| Reviewer or witness (name, or "none — solo run") | _(to be completed)_ |
+| Reviewer or witness (role only, or "none — solo run") | _(to be completed)_ |
 
 ## Rehearsal 2
 
@@ -49,7 +53,7 @@ Add further entries by copying the template at the bottom.
 |---|---|
 | Date and time (start) | _(to be completed)_ |
 | Git commit / working-tree state (`git rev-parse --short HEAD`, `git status --short`) | _(to be completed)_ |
-| Machine used | _(to be completed)_ |
+| Machine used (generic description, no hostname) | _(to be completed)_ |
 | Total duration (target 1:50, hard stop 2:00) | _(to be completed)_ |
 | v1 gate result (expect `CI GATE: PASS`, exit 0) | _(to be completed)_ |
 | v2 gate result and exit status (expect `CI GATE: FAIL`, exit 1 — intentional) | _(to be completed)_ |
@@ -58,7 +62,7 @@ Add further entries by copying the template at the bottom.
 | Corrective action taken (what will change before the next run) | _(to be completed)_ |
 | Fallback video playback result (played end to end? duration ~45–50 s? from which copy?) | _(to be completed)_ |
 | Final verdict: **ready / not ready** | _(to be completed)_ |
-| Reviewer or witness (name, or "none — solo run") | _(to be completed)_ |
+| Reviewer or witness (role only, or "none — solo run") | _(to be completed)_ |
 
 ---
 
@@ -73,7 +77,7 @@ Copy this block, renumber it, and complete it after the run:
 |---|---|
 | Date and time (start) | |
 | Git commit / working-tree state | |
-| Machine used | |
+| Machine used (generic description, no hostname) | |
 | Total duration (target 1:50, hard stop 2:00) | |
 | v1 gate result | |
 | v2 gate result and exit status | |

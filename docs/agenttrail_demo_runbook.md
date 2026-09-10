@@ -18,7 +18,7 @@ Safety policy:
 Open Terminal and move into the repository:
 
 ```bash
-cd /path/to/agenttrail
+cd /path/to/agenttrail          # adjust to the machine's checkout
 ```
 
 Confirm that you are in the correct repository and see the current branch:
@@ -158,22 +158,11 @@ Then rerun the command once. The fixture-based evaluation should complete quickl
 
 ## Backup recordings
 
-The backup recordings are held outside Git in showcase/recordings/ (git-ignored):
-
-- `<short-recording>.mov` — about 22 seconds
-- `<long-recording>.mov` — about 55 seconds
-
-Open the shorter recording:
-
-```bash
-open showcase/recordings/<short-recording>.mov
-```
-
-Open the longer recording:
-
-```bash
-open showcase/recordings/<long-recording>.mov
-```
+Backup screen recordings of the two-command sequence are held outside
+Git in `showcase/recordings/` (git-ignored) plus a second copy per
+[showcase/fallback-recording-checklist.md](../showcase/fallback-recording-checklist.md).
+Open the shorter recording with `open showcase/recordings/<filename>.mov`.
+Do not record private storage paths or machine details in this file.
 
 Use the recordings only if the live terminal demonstration fails or screen sharing causes trouble.
 
@@ -184,7 +173,7 @@ Use the recordings only if the live terminal demonstration fails or screen shari
 You are probably outside the repository. Run:
 
 ```bash
-cd /path/to/agenttrail
+cd /path/to/agenttrail          # adjust to the machine's checkout
 ```
 
 Then retry the original command.
