@@ -62,7 +62,7 @@ jobs:
       AGENT_VERSION: ${{ inputs.agent_version || 'v1' }}
     steps:
       - name: Check out repository
-        # actions/checkout v4.2.2
+        # actions/checkout v7.0.1
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           persist-credentials: false
