@@ -4,6 +4,13 @@
 September 2026, ahead of the showcase on 16 September. **Publication
 approval** is tracked separately under Ticket 14.
 
+> **Later assessment (note added 8 October 2026).** Two security
+> reviews were run after this review, on 12 September 2026. Their
+> findings, and what remains open, are consolidated in the
+> [security assessment](security-assessment.md), which supersedes the
+> findings below. This document is otherwise unchanged and remains the
+> record of the 9–10 September review.
+
 **Reviewed baseline:** the rewritten `main` at commit
 `69beecca2b9e46653b72f6b4bfb37989aee4e33e` (19 commits, single branch,
 no tags). This is the history the public repository is created from;
