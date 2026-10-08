@@ -1,0 +1,154 @@
+# Security hygiene: dependency vulnerability audit and secret scan.
+#
+# Kept separate from ci-gate.yml on purpose. That workflow carries the
+# intentionally failing v2 demonstration; a red run there can be the
+# designed outcome. A red run here always means a finding or a scanner
+# error and is never expected.
+#
+# Two independent jobs:
+#
+# - dependency-audit installs each hash-locked dependency set on
+#   Python 3.12 and runs pip-audit against every lock, including the
+#   maintenance tooling's own lock. The offline application has no
+#   third-party dependencies; these locks cover only the optional
+#   recording, showcase and maintenance tooling.
+# - secret-scan runs Gitleaks over the full fetched history and the
+#   checked-out tree with redacted output, so a matched value never
+#   reaches the log.
+#
+# Both jobs fail on a finding and on a scanner error. Nothing is
+# allow-listed or ignored: there is no Gitleaks config, ignore file or
+# baseline, and no pip-audit ignore flag.
+#
+# The schedule trigger runs only from the default branch, so continuing
+# scans start once this file is on `main`. This YAML alone cannot block
+# merges: a ruleset or branch protection on `main` must additionally
+# require the `dependency-audit` and `secret-scan` checks (see
+# docs/open-code-assessment.md).
+
+name: security-hygiene
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+  schedule:
+    # Daily at 06:17 UTC, so a newly published advisory is reported
+    # within a day even when nothing is being merged.
+    - cron: "17 6 * * *"
+  workflow_dispatch: {}
+
+permissions: {}
+
+concurrency:
+  group: security-hygiene-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  dependency-audit:
+    name: dependency-audit
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    env:
+      PIP_DISABLE_PIP_VERSION_CHECK: "1"
+      PYTHONDONTWRITEBYTECODE: "1"
+    steps:
+      - name: Check out repository
+        # actions/checkout v4.2.2
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+
+      - name: Set up Python 3.12
+        # actions/setup-python v5.3.0
+        uses: actions/setup-python@0b93645e9fea7318ecaed2b359559ac225c90a2b
+        with:
+          python-version: "3.12"
+
+      # Each set is installed into its own throwaway environment with
+      # hash checking and wheels only, so an unpinned, unhashed or
+      # source-only requirement fails here rather than on a
+      # maintainer's machine. This is also what catches a lock that was
+      # regenerated under a different Python version.
+      - name: Install each hash-locked dependency set
+        run: |
+          for set in hygiene recording showcase; do
+            echo "::group::requirements-${set}.txt"
+            python3 -m venv "${RUNNER_TEMP}/venv-${set}"
+            "${RUNNER_TEMP}/venv-${set}/bin/python" -m pip install \
+              --require-hashes --only-binary :all: \
+              -r "requirements-${set}.txt"
+            "${RUNNER_TEMP}/venv-${set}/bin/python" -m pip check
+            echo "::endgroup::"
+          done
+
+      # pip-audit comes from the hash-locked hygiene environment. With
+      # --require-hashes and --disable-pip it audits exactly the pinned
+      # versions in each file without resolving or installing anything.
+      # --strict fails the audit if dependency collection fails for
+      # any requirement. Exit 1 on any known vulnerability.
+      - name: Audit each dependency set
+        run: |
+          for set in hygiene recording showcase; do
+            echo "::group::pip-audit requirements-${set}.txt"
+            "${RUNNER_TEMP}/venv-hygiene/bin/pip-audit" \
+              --require-hashes --disable-pip --strict \
+              --progress-spinner off \
+              -r "requirements-${set}.txt"
+            echo "::endgroup::"
+          done
+
+  secret-scan:
+    name: secret-scan
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    env:
+      GITLEAKS_VERSION: "8.30.1"
+      # SHA-256 of gitleaks_8.30.1_linux_x64.tar.gz, from the release's
+      # published gitleaks_8.30.1_checksums.txt.
+      GITLEAKS_SHA256: "551f6fc83ea457d62a0d98237cbad105af8d557003051f41f3e7ca7b3f2470eb"
+    steps:
+      - name: Check out repository with full history
+        # actions/checkout v4.2.2
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      # The repository's Actions policy allows only the two pinned
+      # GitHub-authored actions used above, so Gitleaks is fetched as a
+      # release binary and verified against a pinned checksum instead
+      # of through a third-party action. A download or checksum failure
+      # fails the job.
+      - name: Install Gitleaks (checksum-verified)
+        run: |
+          archive="gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz"
+          curl --fail --silent --show-error --location \
+            --proto '=https' --tlsv1.2 --max-time 120 \
+            --output "${RUNNER_TEMP}/${archive}" \
+            "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/${archive}"
+          echo "${GITLEAKS_SHA256}  ${RUNNER_TEMP}/${archive}" | sha256sum --check --strict
+          mkdir -p "${RUNNER_TEMP}/gitleaks"
+          tar -xzf "${RUNNER_TEMP}/${archive}" -C "${RUNNER_TEMP}/gitleaks" gitleaks
+          "${RUNNER_TEMP}/gitleaks/gitleaks" version
+
+      # --redact keeps matched values out of the log.
+      # --ignore-gitleaks-allow stops an inline allow-comment from
+      # suppressing a finding. Exit 1 on a leak; any other non-zero
+      # exit is a scanner error and also fails the job.
+      - name: Scan full Git history
+        run: |
+          "${RUNNER_TEMP}/gitleaks/gitleaks" git . \
+            --log-opts="--all -m" --max-archive-depth 2 \
+            --redact --ignore-gitleaks-allow --no-banner
+
+      - name: Scan working tree
+        run: |
+          "${RUNNER_TEMP}/gitleaks/gitleaks" dir . \
+            --max-archive-depth 2 \
+            --redact --ignore-gitleaks-allow --no-banner

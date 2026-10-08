@@ -64,11 +64,13 @@ specification by [make_deck.py](make_deck.py), which needs
 `python-pptx`. **This is a presentation-authoring dependency only** —
 AgentTrail's offline application paths are deliberately
 standard-library-only, and `python-pptx` must never be added to the
-application's dependency set. Use a throwaway virtual environment:
+application's dependency set. Use a throwaway virtual environment and
+install from the hash-locked `requirements-showcase.txt`, from the
+repository root:
 
 ```bash
 python3 -m venv /tmp/agenttrail-deckenv
-/tmp/agenttrail-deckenv/bin/pip install python-pptx
+/tmp/agenttrail-deckenv/bin/python -m pip install --require-hashes --only-binary :all: -r requirements-showcase.txt
 /tmp/agenttrail-deckenv/bin/python showcase/make_deck.py
 ```
 
