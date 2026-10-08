@@ -1,0 +1,26 @@
+# Dependency update tooling.
+#
+# The offline application has no third-party dependencies. The pip
+# entry covers the three pip-compile manifests in the repository root
+# (requirements-*.in) and their hash-locked requirements-*.txt outputs.
+# The github-actions entry covers the commit-SHA pins in
+# .github/workflows/.
+#
+# Dependabot reads this file from the default branch only. Its presence
+# on a feature branch is configuration, not activation. See
+# docs/maintenance.md for how update pull requests are reviewed.
+
+version: 2
+
+updates:
+  - package-ecosystem: "pip"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 5
+
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 5

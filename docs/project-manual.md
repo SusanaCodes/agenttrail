@@ -625,9 +625,11 @@ operational monitoring of the running system, and durable storage. These are Pha
 
 AgentTrail's components correspond conceptually to established tooling.
 **None of these tools is installed, imported, or integrated** — every
-offline path uses only the Python standard library, and the only
-third-party dependency anywhere is `boto3`, required solely by the live
-fixture-recording path. This section
+offline path uses only the Python standard library. The only
+third-party dependencies anywhere are `boto3`, required solely by the
+live fixture-recording path, `python-pptx`, required solely by the
+showcase deck generator, and the `pip-tools` and `pip-audit`
+maintenance tooling ([maintenance.md](maintenance.md)). This section
 documents the mapping only; Phase 2 (identified in the programme plan as
 AC-17 to AC-24, though the repository itself records only AC-25 — see
 [section 13](#13-future-improvements-phase-2)) is intended to turn the
@@ -685,9 +687,12 @@ access, AWS credentials, and paid Bedrock calls.
 Python 3.12). There are no dependencies to install for any offline
 path — offline evaluation, tests, gates, demo replay, policy replay,
 record lookup, and synthetic fixture generation use only the Python
-standard library, and the repository has no packaging or dependency
-files by design. Live fixture recording additionally requires `boto3`
-(see the fixture-recording section below).
+standard library. The repository has no packaging files; its only
+dependency files are the hash-locked `requirements-*.txt` sets for
+optional tooling ([maintenance.md](maintenance.md)). Live fixture
+recording additionally requires `boto3`, installed from
+`requirements-recording.txt` (see the fixture-recording section
+below).
 
 ```bash
 git clone https://github.com/SusanaCodes/agenttrail.git
@@ -849,7 +854,7 @@ checkout; also asserted by `tests/test_demo_scenario.py`).
 ```bash
 python3 -m venv .venv
 source .venv/bin/activate
-python3 -m pip install boto3
+python3 -m pip install --require-hashes --only-binary :all: -r requirements-recording.txt
 
 python3 -m agenttrail.record_fixtures \
   --model-id amazon.nova-lite-v1:0 \
@@ -859,8 +864,8 @@ python3 -m agenttrail.record_fixtures \
 
 **Live: requires configured AWS credentials with Bedrock access and
 makes 36 paid live Bedrock Converse calls, one per golden case.**
-Creating the virtual environment is local; installing `boto3` normally
-requires package-network access. Recording to a candidate output file
+Creating the virtual environment is local; installing the hash-locked
+`boto3` set normally requires package-network access. Recording to a candidate output file
 preserves the committed v1 fixture set for review — replacing the
 committed fixture is a separate, deliberate repository change, and
 re-recording changes the behavioural evidence CI asserts against, so

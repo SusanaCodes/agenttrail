@@ -103,8 +103,10 @@ python3 -m unittest discover -s tests
 - Record lookup displays a stored record by its ID. It does not
   re-execute or reproduce a past decision.
 - Live fixture recording is separate from the offline demonstration.
-  It requires `boto3`, configured AWS credentials with Bedrock access,
-  and makes paid live calls. Nothing in the quickstart touches it.
+  It requires `boto3`, installed from the hash-locked
+  `requirements-recording.txt`, configured AWS credentials with Bedrock
+  access, and makes paid live calls. Nothing in the quickstart touches
+  it.
 - The gate asserts one behavioural property over one recorded snapshot
   of one model. It says nothing about overall quality, fairness or
   bias, or regulatory compliance.
@@ -118,8 +120,40 @@ per-topic documentation index, and the
 The complete demonstrated v1 and v2 output is in the
 [demo scenario](docs/demo-scenario.md).
 
+## Maintenance, security and dependencies
+
+AgentTrail is maintained by Susana
+([@SusanaCodes](https://github.com/SusanaCodes)) as a prototype, on a
+best-efforts basis. Only the head of `main` is maintained.
+
+- **Maintenance:** [maintenance and ownership](docs/maintenance.md)
+  covers support scope, the next review date, dependency review,
+  handover, and how the repository is marked and archived if it stops
+  being maintained.
+- **Security:** [SECURITY.md](SECURITY.md) gives the private reporting
+  route and response targets. Do not report vulnerabilities in public
+  issues. Private reporting is not active yet; it can only be enabled
+  once the repository is public.
+- **Dependencies:** the quickstart and every offline path need no
+  third-party packages. Optional live recording (`boto3`), deck
+  generation (`python-pptx`) and maintenance tooling (`pip-tools`,
+  `pip-audit`) each install from a hash-locked `requirements-*.txt`.
+  Dependabot is configured to propose weekly updates once its
+  configuration is on `main`; the maintainer merges them only when the
+  security and gate checks pass.
+
+AgentTrail uses the GDS/DSIT guidance of 14 May 2026 as its publication
+checklist. Implemented controls, evidence and outstanding gaps are
+documented in the [open-code assessment](docs/open-code-assessment.md).
+This is the maintainer's own assessment of a prototype. It is not a
+government endorsement, a certification, or a claim of legal compliance
+or production readiness.
+
 ## Licence
 
-MIT, see [LICENSE](LICENSE). A
+MIT, see [LICENSE](LICENSE). The copyright line and the unresolved
+provenance position behind it are recorded in the
+[open-code assessment](docs/open-code-assessment.md). A
 [pre-publication safety review](docs/pre-publication-safety-review.md)
-was completed before planned public release.
+was completed in September 2026 before planned public release; it is
+historical evidence and does not cover later changes.

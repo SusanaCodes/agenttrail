@@ -9,10 +9,12 @@ This is a presentation-authoring tool, NOT part of the AgentTrail
 application. It requires ``python-pptx``, which must stay out of the
 application's dependency set (the offline application paths are
 deliberately standard-library-only). Run it from an isolated virtual
-environment:
+environment, installing from the hash-locked ``requirements-showcase.txt``
+at the repository root:
 
     python3 -m venv /tmp/agenttrail-deckenv
-    /tmp/agenttrail-deckenv/bin/pip install python-pptx
+    /tmp/agenttrail-deckenv/bin/python -m pip install --require-hashes \
+        --only-binary :all: -r requirements-showcase.txt
     /tmp/agenttrail-deckenv/bin/python showcase/make_deck.py
 
 The script writes the deck next to itself and prints the output path.
