@@ -1,8 +1,23 @@
 # CI gate: escalation-rate regression (Ticket 6)
 
-Blocks a deploy when the agent's behaviour on the labelled
-low-confidence cases regresses. The gate runs the Ticket 5 evaluation
-harness and applies a version-controlled policy to its result.
+AgentTrail detects tested routing regressions recorded in the audit
+trail for the selected fixture snapshot.
+
+The gate runs the Ticket 5 evaluation harness and applies a
+version-controlled policy to its result. Its output is a verdict and an
+exit code, with these limits:
+
+- Fixture responses are not authenticated. The stored SHA-256
+  fingerprint matches a request to its recorded entry. It is not a
+  signature over the response.
+- Merge blocking depends on GitHub repository rules requiring the
+  `evaluation-gate` check. The workflow file alone does not enforce it.
+  Enforcement is currently unverified (see
+  [Required branch protection](#required-branch-protection)).
+- A failed gate and a skipped `deployment-demo` job are what this
+  repository demonstrates. Neither is enforcement of merges, and
+  neither is a blocked real deployment: `deployment-demo` is a no-op
+  simulation and no real deployment workflow exists.
 
 ## What risk this controls
 
@@ -10,8 +25,10 @@ The low-confidence cases (dataset v1.0.0: the 12 cases labelled
 `expected.confidence_band == "low"`, all `evidence_status == "missing"`)
 must escalate to a human. A prompt, model, threshold, or code change
 that quietly makes the agent *decide* one of those cases is exactly the
-regression this project exists to prevent. The gate makes that change
-unable to reach a deploy unnoticed.
+regression this project exists to detect. The gate fails on that change
+when it appears in the audited routing for the selected fixture
+snapshot; a regression the golden cases and fixtures do not exercise is
+not detected.
 
 ## Behaviour, not flags
 
@@ -25,8 +42,8 @@ escalation machinery in place but stops using it still fails.
 The gate consumes `agenttrail.eval.evaluate()`, which persists every
 decision through the audited execution path and scores only what it
 rereads from the trail — never the model response or a return value. A
-decision that was not durably audited cannot pass the evaluation, so it
-cannot pass the gate either. There is no second evaluation
+decision that was not written to the trail and reread from it cannot
+pass the evaluation, so it cannot pass the gate either. There is no second evaluation
 implementation and no side channel.
 
 ## Policy
@@ -48,6 +65,12 @@ The thresholds are **not** overridable by environment variable, CLI
 flag, or workflow input; that would let the safety control be bypassed
 without review. Tests exercise boundaries by injecting policy values
 into the pure `apply_policy()` function only.
+
+That statement covers the thresholds, not the evidence they are applied
+to. The CLI also accepts `--dataset` and `--fixtures` paths, so a
+command line can point the gate at a different dataset or fixture set.
+The committed workflow passes only `--agent-version`, so CI evaluates
+the committed dataset and the selected version's own fixture set.
 
 ## CLI
 
@@ -122,16 +145,18 @@ Under the production policy the required minimum is `100.0%`.
   last-green result, so no historical comparison exists to report.
   Mismatch-only blocks state the mismatch count and do not describe the
   escalation rate as breached.
-- **Where it appears.** The report always goes to normal stdout, so
-  local runs and CI logs retain the blocking reason. When
+- **Where it appears.** On a block (exit `1`) the report is printed to
+  stdout before the job-summary write is attempted, so local runs and
+  CI logs retain the blocking reason. An exit `2` run prints no report:
+  only a `gate error:` line on stderr. When
   `GITHUB_STEP_SUMMARY` is set (as it is in every GitHub Actions step),
   a Markdown rendering of the same lines is also appended to the job
   summary on the workflow run page. A missing variable is normal local
-  execution; a summary file that cannot be written produces a stderr
-  warning without changing the verdict.
-- **Still blocking.** The report is written before the gate returns its
+  execution; a summary file that cannot be opened or written (an
+  `OSError`) produces a stderr warning without changing the verdict.
+- **Still failing.** The report is written before the gate returns its
   existing exit code `1`, and it changes no gate semantics: the job
-  still fails and the pipeline stays blocked.
+  still fails, and jobs that declare `needs:` on it are skipped.
 
 ## GitHub Actions
 
@@ -157,9 +182,10 @@ no caches. Third-party actions are pinned to full commit SHAs with the
 release version in a comment.
 
 A minimal no-op `deployment-demo` job declares
-`needs: evaluation-gate`: it deploys nothing, exists solely to make
-the "deploy blocked" property visible, and is skipped whenever the
-gate fails (as in a `v2` demo run).
+`needs: evaluation-gate`: it deploys nothing and exists solely to show
+a dependent job being skipped whenever the gate fails (as in a `v2`
+demo run). A skipped simulation is not evidence that a real deployment
+was blocked.
 
 ## Wiring a future deployment workflow
 
@@ -187,7 +213,9 @@ GitHub (Settings → Branches, or a repository ruleset targeting `main`):
 3. Require branches to be up to date before merging (recommended, so
    the gate ran against the merged state).
 
-Without the required check, a red gate is advisory only.
+Without the required check, a red gate is advisory only. Whether these
+rules are configured on the GitHub repository has not been checked, so
+merge enforcement is currently unverified.
 
 ## Proving the gate goes red safely
 
@@ -237,6 +265,7 @@ response is resolved from the selected agent version's fixture set
 no live fallback. The test suite runs the
 same evaluation with sockets patched to fail and `AWS_*` scrubbed.
 Identical runs produce byte-identical gate output — no timestamps,
-temporary paths, or unordered mappings appear in it. Fixtures prove the
-recorded contract, not current live-model behaviour; see
+temporary paths, or unordered mappings appear in it. Fixtures hold one
+recorded, unauthenticated snapshot and say nothing about current
+live-model behaviour; see
 `docs/model-fixtures.md`.

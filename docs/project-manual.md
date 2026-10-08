@@ -32,8 +32,9 @@ agent triages synthetic benefit cases — it either makes an automated
 decision or escalates the case to a human — and every decision it makes
 is recorded in a structured, append-only audit trail. A deterministic
 evaluation harness replays a labelled dataset through the agent, scores
-what was actually written to the trail, and a CI gate blocks any change
-that regresses the agent's escalation behaviour.
+what was actually written to the trail, and a CI gate fails when that
+audited routing regresses on the tested cases for the selected fixture
+snapshot.
 
 **The production problem it addresses.** When an LLM-backed agent makes
 decisions that affect people, three things routinely go wrong:
@@ -69,17 +70,22 @@ its 36 cases as low-confidence (`evidence_status == "missing"`), and all
 low-confidence escalation rate is exactly 1.0000 (baseline 1.0000,
 tolerance 0.0000) and that no audited routing decision disagrees with
 its golden label. A staged demonstration (the intentionally unsafe `v2`
-agent version) proves the gate genuinely blocks a change that quietly
-auto-decides three of those cases.
+agent version) shows the gate failing on a deliberately seeded
+regression: synthetic fixtures make three of those cases auto-decide.
+Whether a failed gate stops a merge depends on GitHub repository rules
+requiring the `evaluation-gate` check, which is currently unverified
+(see [ci-gate.md](ci-gate.md)).
 
 **What AgentTrail does not claim to solve.** The cases, labels, and
 routing rules are synthetic evaluation data — they do not represent,
 approximate, or implement real UK benefit policy. The gate asserts one
 behavioural property over one recorded snapshot of one model; it says
 nothing about current live-model quality, general model safety, fairness
-or bias, or any other decision path. The audit trail is append-only by
-construction but is not tamper-evident, durable storage. AgentTrail does
-not certify regulatory compliance (see [section 9](#9-eu-ai-act-article-12-mapping)).
+or bias, or any other decision path. Fixture responses are not
+authenticated. The audit trail is append-only by construction, but it is
+not tamper-evident and it is not durable storage. AgentTrail does not
+establish legal compliance (see [section 9](#9-eu-ai-act-article-12-mapping))
+or production readiness.
 
 ## 2. End-to-end operation
 
@@ -118,7 +124,7 @@ The complete path, from a structured case to a CI verdict:
    [`agenttrail/eval.py`](../agenttrail/eval.py) runs every golden case
    through `decide_case_audited`, then *discards the return values*,
    reopens the persisted trail, and scores only what was successfully
-   written to the trail. A test proves this: it patches the audited call to return
+   written to the trail. A test checks this: it patches the audited call to return
    the opposite decision for every case while still writing truthful
    records, and the evaluation still passes.
 6. **Routing is compared with labelled expectations.** Each audited
@@ -230,8 +236,8 @@ rate. Across all 36 cases the v1 run scores 36/36 matched, rate 1.0000.
 **Gate consequence.** 1.0000 meets the minimum passing rate of 1.0000
 with zero mismatches, so `python3 -m agenttrail.ci_gate` prints
 `CI GATE: PASS` and exits 0 — the gate passes and downstream jobs that
-depend on it are permitted to run; in this repository that is
-demonstrated by the no-op `deployment-demo` job.
+depend on it are permitted to run; in this repository the only such job
+is the no-op `deployment-demo` simulation, which deploys nothing.
 
 **The same case under the unsafe v2 demo.** SYN-003 is one of the three
 cases (`SYN-003`, `SYN-015`, `SYN-027`) the intentionally unsafe v2
@@ -342,8 +348,12 @@ pattern-constrained structured fields only (see
 `0o600` permissions where the platform honours the mode. The GitHub
 Actions workflow uses `permissions: contents: read`, pins third-party
 actions to full commit SHAs, requests no secrets, and needs no AWS
-access. Validation error messages name offending fields but never echo
-raw values; redaction-gate findings never contain the matched text.
+access. Audit-record value checks name the offending field without
+echoing the rejected value, and redaction-gate findings never contain
+the matched text. Other error paths are not sanitised in the same way:
+case-input validation prints the rejected value, model-response
+validation prints the rejected decision, confidence or template, and
+audit-record and case-input validation print unexpected field names.
 
 **Durability and concurrency limitations (honest).** The trail is
 append-only JSONL with a single `O_APPEND` write per record. It is
@@ -379,16 +389,16 @@ are not byte-identical across runs.
 | Docker | — | **Not used.** No Dockerfile or container configuration exists anywhere in the repository | Every offline path runs on the Python standard library and needs no environment packaging | Containerisation would be relevant for Phase 2 deployment work only | Absence verified by repository search |
 | JSON / JSONL | Serialisation for dataset, fixtures, audit trail | Deterministic encoding everywhere (sorted keys, compact separators, ASCII-only); one record per line | Line-append fits an append-only trail; diffs review well; no database dependency | No transactions, indexes, or tamper evidence — accepted and documented | [`agenttrail/audit.py`](../agenttrail/audit.py), [`data/`](../data/) |
 | `unittest` (standard library) | Test framework for the full suite | `python3 -m unittest discover -s tests` exits 0 with output ending `OK`; CI runs it verbosely as the first step | Consistent with the standard-library-only decision for the offline paths | pytest is more ergonomic but would add the project's only development dependency | [`tests/`](../tests/) |
-| Golden dataset | Ground-truth labels: 36 synthetic cases, full Cartesian product of the three input enums | v1.0.0 committed with JSON Schema; distribution pinned by tests | Behavioural assertion needs labelled expectations; synthetic data removes all PII risk | Hand-picked cases would be smaller but lose the exhaustive-coverage property | [`data/golden_cases.jsonl`](../data/golden_cases.jsonl), [golden-dataset.md](golden-dataset.md) |
+| Golden dataset | Ground-truth labels: 36 synthetic cases, full Cartesian product of the three input enums | v1.0.0 committed with JSON Schema; distribution pinned by tests | Behavioural assertion needs labelled expectations; synthetic data keeps real personal data out of the evaluation set | Hand-picked cases would be smaller but lose the exhaustive-coverage property | [`data/golden_cases.jsonl`](../data/golden_cases.jsonl), [golden-dataset.md](golden-dataset.md) |
 | Decision agent | Decide-or-escalate with validation, forced tool call, confidence threshold, templated rationale | `decide_case` + audited wrapper complete; strict response validation; threshold 0.70 | One structured call is fully auditable; free text is excluded by construction | An agent framework would add capability and opacity this showcase does not need | [`agenttrail/decision.py`](../agenttrail/decision.py) |
-| Audit trail | One validated append-only record per audited decision — the hinge | Writer, validator, reader, and streaming reader complete; closed field set; honest delivery guarantees documented | Evaluation must rest on persisted evidence, not return values | A database would add durability but also a dependency; deferred to Phase 2 | [`agenttrail/audit.py`](../agenttrail/audit.py), [`agenttrail/audit_reader.py`](../agenttrail/audit_reader.py), [audit-trail.md](audit-trail.md) |
+| Audit trail | One validated append-only record per audited decision — the hinge | Writer, validator, reader, and streaming reader complete; closed field set; delivery and durability limitations documented | Evaluation must rest on persisted evidence, not return values | A database would add durability but also a dependency; deferred to Phase 2 | [`agenttrail/audit.py`](../agenttrail/audit.py), [`agenttrail/audit_reader.py`](../agenttrail/audit_reader.py), [audit-trail.md](audit-trail.md) |
 | Fixture recorder and replay client | Record real Bedrock responses once; replay them by exact request fingerprint | Recorder (atomic publish, `--overwrite` guard) and `ReplayBedrockClient` (fail-closed) complete; 36-entry genuine v1 set committed | Deterministic, offline, credential-free, cost-free evaluation | Live calls in CI are flaky and paid; `temperature 0.0` alone guarantees nothing across model revisions | [`agenttrail/record_fixtures.py`](../agenttrail/record_fixtures.py), [`agenttrail/fixtures.py`](../agenttrail/fixtures.py), [model-fixtures.md](model-fixtures.md) |
 | Evaluation harness | Score audited routing against golden labels; compute the low-confidence escalation rate | `evaluate()` and CLI complete; verdict read from the reopened trail; structured `EvalResult` for the gate | The safety claim is behavioural, so the measurement must be behavioural | A flag-existence check would be tautological (see [decision log ADR-006](decision-log.md#adr-006--behavioural-assertion-over-a-labelled-dataset)) | [`agenttrail/eval.py`](../agenttrail/eval.py), [evaluation.md](evaluation.md) |
 | Policy configuration and policy replay | Versioned routing-policy registry; replay a historical trail under a proposed threshold and report flips | **Implemented** (Ticket 10 / AC-16): registry (`v1` 0.70, proposed `v2` 0.95), read-only replay, explicit legacy-baseline declaration, deterministic flip report | Governance needs change-impact evidence before a policy changes | Re-thresholding stored confidences would fake a replay; instead the recorded response is re-parsed and re-routed by the production path | [`agenttrail/routing_policy.py`](../agenttrail/routing_policy.py), [`agenttrail/policy_replay.py`](../agenttrail/policy_replay.py), [policy-replay.md](policy-replay.md) |
-| CI gate | Apply the version-controlled policy to the evaluation result; block on regression | Complete: policy fixed in code (baseline 1.0000, tolerance 0.0000), exit codes 0/1/2, wired into GitHub Actions | The safety property must be enforceable, not advisory | Overridable thresholds would let the control be bypassed without review | [`agenttrail/ci_gate.py`](../agenttrail/ci_gate.py), [ci-gate.md](ci-gate.md) |
+| CI gate | Apply the version-controlled policy to the evaluation result; fail on a tested regression | Complete: policy fixed in code (baseline 1.0000, tolerance 0.0000), exit codes 0/1/2, wired into GitHub Actions | The safety property must produce a pass/fail check that repository rules can require; whether merges are actually blocked depends on those rules and is currently unverified | Overridable thresholds would let the control be bypassed without review | [`agenttrail/ci_gate.py`](../agenttrail/ci_gate.py), [ci-gate.md](ci-gate.md) |
 | Failure report | Explain a blocked gate: breached property, required vs measured, shortfall in percentage points | Complete; rendered from the same `GateDecision` as the verdict; also appended to the Actions job summary | A gate that blocks without explaining trains people to bypass it | It reports the current shortfall only — no historical comparison exists to report | [`agenttrail/gate_report.py`](../agenttrail/gate_report.py) |
-| Redaction gate | Deterministic backstop scan of committed record data for three structured UK identifiers | Complete: NI number, UK postcode, NHS number detectors; findings never contain the matched text; own CI step | Complements PII-by-construction with defence in depth | General NER rejected for this bounded schema (see [section 8](#8-privacy-and-redaction)) | [`agenttrail/redaction_gate.py`](../agenttrail/redaction_gate.py), [redaction-gate.md](redaction-gate.md) |
-| Demonstration (v1 green / v2 red) | Prove the gate blocks an unsafe change | Complete: agent-version registry, intentionally unsafe v2 prompt, clearly-marked synthetic v2 fixture set, manual workflow dispatch | A gate that has never blocked anything is unproven | The v2 fixtures are synthetic by design — marked in the file name, tool-use IDs, and fixed `recorded_at` | [`agenttrail/versions.py`](../agenttrail/versions.py), [`agenttrail/demo_fixtures.py`](../agenttrail/demo_fixtures.py), [demo-scenario.md](demo-scenario.md) |
+| Redaction gate | Deterministic backstop scan of committed record data for three structured UK identifiers | Complete: NI number, UK postcode, NHS number detectors; findings never contain the matched text; own CI step | Complements PII minimisation by construction with a second, narrower check | General NER rejected for this bounded schema (see [section 8](#8-privacy-and-redaction)) | [`agenttrail/redaction_gate.py`](../agenttrail/redaction_gate.py), [redaction-gate.md](redaction-gate.md) |
+| Demonstration (v1 green / v2 red) | Show the gate failing on a deliberately seeded unsafe change | Complete: agent-version registry, intentionally unsafe v2 prompt, clearly-marked synthetic v2 fixture set, manual workflow dispatch | A gate that has never been seen to fail is untested | The v2 fixtures are synthetic by design — marked in the file name, tool-use IDs, and fixed `recorded_at` | [`agenttrail/versions.py`](../agenttrail/versions.py), [`agenttrail/demo_fixtures.py`](../agenttrail/demo_fixtures.py), [demo-scenario.md](demo-scenario.md) |
 | Record lookup | Render one stored audit record by `decision_id` for an auditor | Complete: streaming lookup, allow-listed rendering, distinct exit codes for not-found vs untrustworthy trail | Traceability requires retrieving a specific decision's evidence | It is a lookup, not execution replay — it reproduces nothing (see [ADR-012](decision-log.md#adr-012--record-lookup-not-execution-replay)) | [`agenttrail/record_view.py`](../agenttrail/record_view.py), [record-view.md](record-view.md) |
 
 **The deliberate change from GitLab CI to GitHub Actions.** The CI gate
@@ -427,9 +437,11 @@ minimum passing rate                    = 1.0000
 
 Zero tolerance is deliberate: with only 12 labelled low-confidence
 cases, one missed escalation is an 8.33 percentage-point drop — never
-statistical noise. The policy is not overridable by environment
-variable, CLI flag, or workflow input; weakening it must be a reviewed
-code change.
+statistical noise. The thresholds are not overridable by environment
+variable, CLI flag, or workflow input; changing them requires a source
+change. The gate's inputs are a separate matter: the CLI accepts
+`--dataset` and `--fixtures` paths, which the committed workflow does
+not pass.
 
 **How failure classes are distinguished.** The exit codes separate them:
 
@@ -543,15 +555,20 @@ The control hierarchy, strongest first:
    records are built from an explicit allow-list (the case object is
    never serialised wholesale) with `additionalProperties: false`;
    every string field is constrained by an enum, a bounded identifier
-   pattern, or the canonical timestamp format. There is nowhere for a
-   name, address, or free-text note to live.
+   pattern, or the canonical timestamp format. No field accepts
+   whitespace-separated free text such as an address or a note. The
+   bounded identifier fields are not enums, though: `model_id` accepts
+   any token of up to 128 letters, digits and `._:/-` characters, so
+   the schema limits what a record can hold without excluding every
+   personal identifier.
 2. **Rationale from controlled templates.** The model selects a
    template identifier from a closed enum; the rationale text is
    rendered locally from that template using validated case fields.
    Audit validation independently re-checks that a record's rationale
    is exactly the expected rendering for its own decision and fields,
-   so arbitrary prose cannot enter the trail through any public
-   function. Model free text is never stored.
+   so a record whose rationale is any other text fails validation in
+   the audit module's build, append and read functions. The decision
+   path stores no model free text.
 3. **Regex scanning as a backstop.** The redaction gate scans the raw
    line text of the committed structured JSONL data (golden dataset and
    both fixture sets) for three structured UK identifier formats:
@@ -560,7 +577,10 @@ The control hierarchy, strongest first:
    the modulus-11 checksum, because a mistyped NHS number is still
    sensitive). Findings report file, line, and category with a
    `[REDACTED]` marker — the matched text is discarded inside the
-   scanner and cannot appear in any output.
+   scanner. The gate's own error path (exit 2) prints the target path
+   and an exception class name, not file content. This covers the
+   redaction gate's output only; other commands' error messages can
+   echo rejected values (see [section 4](#4-architecture)).
 
 **Why general NER was rejected** (NER: named-entity recognition, the
 machine-learning technique for spotting names, places, and organisations
@@ -663,8 +683,8 @@ The showcase deliberately excludes, in Phase 1:
   audit → evaluation → gate chain fully inspectable end to end.
 - **MCP gateway integration** — a gateway inverts the architecture
   (calls flow through a mediating layer); that is the designed Phase 2
-  step, deferred so that Phase 1 could deliver one complete, enforced
-  safety gate first.
+  step, deferred so that Phase 1 could deliver one complete safety
+  gate first.
 
 The rationale is architectural focus and controlled scope: one control
 doing a meaningful, verifiable job end to end — dataset, decision,
@@ -782,7 +802,9 @@ lines (`SYN-003`, `SYN-015`, `SYN-027`), and the safety report:
 required minimum 100.0%, measured 75.0%, shortfall 25.0 percentage
 points, `Decision: Gate blocked`. In GitHub Actions, dispatching with
 `agent_version: v2` produces a genuinely red run and `deployment-demo`
-is skipped — the visible "deployment blocked" evidence. See
+is skipped. That shows a failed gate and a skipped deployment
+simulation; it is not evidence that a merge or a real deployment was
+blocked. See
 [demo-scenario.md](demo-scenario.md).
 
 ### Policy replay

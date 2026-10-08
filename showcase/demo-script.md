@@ -19,11 +19,12 @@ say the fallback line in the [recovery section](#recovery-language)
 and play the verified recording. Two minutes leaves no troubleshooting
 allowance.
 
-Spoken length: ~216 words. At a brisk-but-natural 135–145 words per
-minute that is ~90–96 seconds of speech; the two command runs, two
+Spoken length: ~225 words. At a brisk-but-natural 135–145 words per
+minute that is ~93–100 seconds of speech; the two command runs, two
 Cmd-Tab switches and the pause on the red result account for the
-remaining ~15–20 seconds. **This runs close to the 1:50 target — time
-it in rehearsal.** If a timed run exceeds 1:50, the pre-agreed trim is
+remaining ~15–20 seconds. **This runs at or slightly over the 1:50
+target and has not been timed since the closing claim was lengthened —
+time it in rehearsal.** If a timed run exceeds 1:50, the pre-agreed trim is
 the sentence "That gives people evidence for review. It does not
 automatically approve the policy." (keep it for questions instead).
 
@@ -53,8 +54,8 @@ automatically approve the policy." (keep it for questions instead).
 > append-only audit trail.
 >
 > The evaluation reads that decision back from the trail, compares it
-> with the expected behaviour, and the CI gate decides whether the
-> change can be released.
+> with the expected behaviour, and the CI gate passes or fails the
+> change.
 >
 > Recorded model responses keep the test deterministic and offline."
 
@@ -92,10 +93,10 @@ at: `measured_rate=0.7500` · `9 of 12` escalated · the three
 > "It escalates only nine cases and misses three decisions that
 > should have gone to a human.
 >
-> The process exits with status one and blocks the pipeline.
+> The process exits with status one, so the gate fails.
 >
-> This red result is not the demo failing. It is the safety control
-> doing its job: stopping an unsafe change before deployment."
+> This red result is not the demo failing. It is the gate doing its
+> job: failing on a regression I seeded for this demo."
 
 *HAND-OFF: Cmd-Tab back to PowerPoint, advance to slide 3.*
 
@@ -112,9 +113,10 @@ slide.*
 > That gives people evidence for review. It does not automatically
 > approve the policy.
 >
-> The important result is simple:
+> The claim is deliberately narrow:
 >
-> An unsafe AI change cannot pass silently."
+> AgentTrail detects tested routing regressions recorded in the audit
+> trail for the selected fixture snapshot."
 
 **Stop there.** No thank-you slide, no future-work explanation —
 keep those for questions if asked.
@@ -124,16 +126,24 @@ keep those for questions if asked.
 ## If asked in questions
 
 - **"Was v2 a real regression?"** — "No. v2 is an intentionally
-  unsafe version built as a controlled demonstration; the point is
-  that if a real change ever behaved that way, the gate would block
-  it exactly like this."
+  unsafe version built as a controlled demonstration, with its three
+  failures deliberately seeded. A real change would fail the gate the
+  same way only if it showed up in the tested cases and fixtures."
+- **"Does a red gate stop the merge or the deployment?"** — "Not by
+  itself. Merge blocking depends on GitHub repository rules requiring
+  the evaluation-gate check, and that enforcement is currently
+  unverified. The deployment job in the workflow is a no-op
+  simulation; there is no real deployment."
+- **"Can the fixtures be trusted?"** — "They are not authenticated.
+  The fingerprint matches a request to its recorded entry; it does
+  not sign the response."
 - **"Is this EU AI Act compliance?"** — "No. It demonstrates an
   engineering pattern aligned with Article 12's logging and
   traceability requirement. It is not a legal-compliance claim, and
   this demonstrator is not a regulated high-risk system."
-- **"Is the trail tamper-proof?"** — "No — it is a local append-only
-  JSONL file, a demonstrator. Durable, integrity-protected storage is
-  future work."
+- **"Is the trail tamper-proof?"** — "No. It is a local append-only
+  JSONL file, a demonstrator, and it is not even tamper-evident.
+  Durable, integrity-protected storage is future work."
 - **"Which decision changed in the replay?"** — "SYN-031: decided at
   0.90 confidence, it would escalate under the proposed 0.95
   threshold. The replay is change-impact evidence for a human review;

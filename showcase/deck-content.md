@@ -11,7 +11,7 @@ Design intent: exactly **three** 16:9 slides for a strict two-minute
 showcase. No title slide, no agenda, no closing slide. Near-black
 background, white headlines at 44 pt or larger, one electric-blue
 accent for the audit trail and regulatory framing, safety green only
-on the v1 result, strong red only on the blocked v2 result. No stock
+on the v1 result, strong red only on the failed v2 result. No stock
 imagery, no dashboard cards, no terminal screenshots, no marketing
 language. The terminal failure is the centrepiece; the slides create
 the stakes, explain the mechanism, and land the conclusion.
@@ -36,7 +36,7 @@ Speaker notes carry the full legal position and compact sources (see
 
 ## Slide 2 — Architecture
 
-> **AgentTrail turns evidence into a release decision.**
+> **AgentTrail turns audit evidence into a gate verdict.**
 
 Vertical flow, audit trail visually central (blue):
 
@@ -52,26 +52,36 @@ CI safety gate
 
 - One line: "Offline. Deterministic. No live model call in CI."
 - Small footer: "trail is a local append-only JSONL file — a
-  demonstrator, not tamper-proof production storage"
+  demonstrator; it is not tamper-evident"
 
 ## Slide 3 — Result and closing beat
 
-> **Unsafe change: blocked before deployment.**
+> **Seeded regression: the gate fails.**
 
 Dominant comparison (large figures; green for v1 only, red for v2
 only):
 
 ```text
 v1    100%    PASS
-v2     75%    BLOCKED
+v2     75%    FAIL
 ```
 
-- Supporting line: "three missed escalations · exit status 1 stops
-  the pipeline"
-- Replay proof (blue, large): "36 past decisions replayed. One would
+- Supporting line: "three seeded missed escalations · gate exits with
+  status 1"
+- Replay result (blue): "36 past decisions replayed. One would
   change."
-- Closing statement (large, prominent):
-  "An unsafe AI change cannot pass silently."
+- Headline claim (white, bold, 24 pt; word for word the same sentence
+  as in `README.md` and `docs/ci-gate.md`):
+  "AgentTrail detects tested routing regressions recorded in the audit
+  trail for the selected fixture snapshot."
+- Limits, directly beneath the claim (12 pt, four lines):
+  - "Fixture responses are not authenticated."
+  - "Merge blocking depends on GitHub repository rules requiring the
+    evaluation-gate check."
+  - "The workflow file alone does not enforce it. Enforcement is
+    currently unverified."
+  - "Shown here: a failed gate and a skipped deployment-simulation
+    job, not enforcement of merges or real deployments."
 - The SYN-031 case detail is not visible slide copy — it lives in the
   slide's speaker notes (accuracy section).
 
@@ -112,8 +122,19 @@ subject to it in 2027.
 - v2 gate: `measured_rate=0.7500`, 9/12 escalated, mismatches SYN-003,
   SYN-015, SYN-027, `Decision: Gate blocked`, exit status 1 —
   **intentional**: the v2 fixture set is a synthetic, controlled
-  unsafe version built to demonstrate a regression. No production
-  model spontaneously regressed.
+  unsafe version whose three failures are deliberately seeded to
+  demonstrate a regression. No production model spontaneously
+  regressed.
+- "Gate blocked" is the gate's own report wording for a failed gate.
+  The deck shows a failed gate and, in GitHub Actions, a skipped no-op
+  deployment-simulation job. Neither is enforcement of merges or of
+  real deployments; no real deployment workflow exists.
+- Merge blocking depends on GitHub repository rules requiring the
+  `evaluation-gate` check. The workflow file alone does not enforce
+  it. Enforcement is currently unverified.
+- Evaluation uses offline fixtures. Fixture responses are not
+  authenticated: the stored fingerprint matches a request to its
+  entry and does not sign the response.
 - The gate threshold is version-controlled (baseline 1.0000, tolerance
   0.0000) and cannot be overridden from the CLI.
 - Evaluation reads decisions back from the persisted audit trail, not
@@ -121,5 +142,7 @@ subject to it in 2027.
 - Policy replay: 36 records evaluated, 35 unchanged, 1 flip — SYN-031
   decide → escalate under the proposed 0.95 confidence threshold.
   Read-only change-impact evidence; it approves and rejects nothing.
-- The append-only JSONL trail is a local demonstrator, not durable
-  tamper-proof production storage.
+- The append-only JSONL trail is a local demonstrator. It is not
+  tamper-evident and it is not durable production storage.
+- The deck does not establish legal compliance or production
+  readiness.
