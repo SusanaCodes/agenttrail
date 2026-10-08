@@ -31,7 +31,7 @@ from pptx.util import Inches, Pt
 
 # Palette: near-black ground, white type, one electric-blue accent.
 # Safety green appears only on the v1 result; strong red only on the
-# blocked v2 result. Nothing decorative.
+# failed v2 result. Nothing decorative.
 BG = RGBColor(0x0A, 0x0E, 0x14)  # near-black
 WHITE = RGBColor(0xFF, 0xFF, 0xFF)
 MUTED = RGBColor(0x93, 0xA1, 0xAD)  # supporting text on dark
@@ -40,7 +40,7 @@ BLUE = RGBColor(0x3D, 0xA5, 0xFF)  # electric blue — audit trail / regulation
 PANEL = RGBColor(0x16, 0x1D, 0x27)  # flow boxes
 PANEL_LINE = RGBColor(0x2E, 0x3A, 0x47)
 GREEN = RGBColor(0x2E, 0xC2, 0x6E)  # v1 PASS only
-RED = RGBColor(0xF1, 0x4C, 0x4C)  # v2 BLOCKED only
+RED = RGBColor(0xF1, 0x4C, 0x4C)  # v2 FAIL only
 
 FONT = "Helvetica Neue"
 
@@ -302,7 +302,7 @@ def slide_2_architecture(prs):
         1.5,
         [
             (
-                "AgentTrail turns evidence into a release decision.",
+                "AgentTrail turns audit evidence into a gate verdict.",
                 {"size": 44, "bold": True, "color": WHITE},
             )
         ],
@@ -427,7 +427,7 @@ def slide_2_architecture(prs):
         [
             (
                 "trail is a local append-only JSONL file — "
-                "a demonstrator, not tamper-proof production storage",
+                "a demonstrator; it is not tamper-evident",
                 {"size": 11, "color": FAINT},
             )
         ],
@@ -445,7 +445,7 @@ def slide_2_architecture(prs):
         "\n"
         "The evaluation reads that decision back from the trail, "
         "compares it with the expected behaviour, and the CI gate "
-        "decides whether the change can be released.\n"
+        "passes or fails the change.\n"
         "\n"
         "Recorded model responses keep the test deterministic and "
         "offline.\n"
@@ -474,11 +474,11 @@ def slide_2_architecture(prs):
         "It escalates only nine cases and misses three decisions that "
         "should have gone to a human.\n"
         "\n"
-        "The process exits with status one and blocks the pipeline.\n"
+        "The process exits with status one, so the gate fails.\n"
         "\n"
-        "This red result is not the demo failing. It is the safety "
-        "control doing its job: stopping an unsafe change before "
-        "deployment.\n"
+        "This red result is not the demo failing. It is the gate "
+        "doing its job: failing on a regression I seeded for this "
+        "demo.\n"
         "\n"
         "PRESENTER CUE: Return to Slide 3.\n"
         "\n"
@@ -491,10 +491,14 @@ def slide_2_architecture(prs):
         "- Expected live outputs: v1 → CI GATE: PASS, "
         "measured_rate=1.0000, 12/12 escalated, exit 0. v2 → "
         "CI GATE: FAIL, measured_rate=0.7500, 9/12, three mismatch "
-        "lines, Decision: Gate blocked, exit 1 (intentional — v2 is "
-        "a synthetic, controlled unsafe version).\n"
-        "- The local JSONL trail is a demonstrator, not tamper-proof "
-        "production storage.",
+        "lines, Decision: Gate blocked, exit 1 (intentional — v2's "
+        "three failures are deliberately seeded in synthetic "
+        "fixtures).\n"
+        "- “Gate blocked” is the gate's own report wording for a "
+        "failed gate. It is not enforcement of a merge or of a real "
+        "deployment.\n"
+        "- The local JSONL trail is a demonstrator. It is not "
+        "tamper-evident.",
     )
 
 
@@ -506,18 +510,18 @@ def slide_3_result(prs):
         0.9,
         0.35,
         11.6,
-        1.5,
+        0.95,
         [
             (
-                "Unsafe change: blocked before deployment.",
+                "Seeded regression: the gate fails.",
                 {"size": 44, "bold": True, "color": WHITE},
             )
         ],
     )
 
     rows = [
-        (2.0, "v1", "100%", "PASS", GREEN),
-        (3.35, "v2", "75%", "BLOCKED", RED),
+        (1.4, "v1", "100%", "PASS", GREEN),
+        (2.65, "v2", "75%", "FAIL", RED),
     ]
     for row_y, version, rate, verdict, color in rows:
         _text_box(
@@ -551,13 +555,13 @@ def slide_3_result(prs):
     _text_box(
         slide,
         0.9,
-        4.85,
+        4.05,
         11.6,
-        0.45,
+        0.4,
         [
             (
-                "three missed escalations  ·  exit status 1 stops "
-                "the pipeline",
+                "three seeded missed escalations  ·  gate exits with "
+                "status 1",
                 {"size": 17, "color": MUTED},
             )
         ],
@@ -567,13 +571,31 @@ def slide_3_result(prs):
     _text_box(
         slide,
         0.9,
-        5.45,
+        4.5,
         11.6,
-        0.6,
+        0.5,
         [
             (
                 "36 past decisions replayed. One would change.",
-                {"size": 28, "bold": True, "color": BLUE},
+                {"size": 22, "bold": True, "color": BLUE},
+            )
+        ],
+        align=PP_ALIGN.CENTER,
+    )
+
+    # The headline claim, word for word as in README.md and
+    # docs/ci-gate.md, with its limits directly beneath it.
+    _text_box(
+        slide,
+        0.9,
+        5.1,
+        11.6,
+        1.0,
+        [
+            (
+                "AgentTrail detects tested routing regressions recorded "
+                "in the audit trail for the selected fixture snapshot.",
+                {"size": 24, "bold": True, "color": WHITE},
             )
         ],
         align=PP_ALIGN.CENTER,
@@ -582,16 +604,32 @@ def slide_3_result(prs):
     _text_box(
         slide,
         0.9,
-        6.3,
+        6.2,
         11.6,
-        0.85,
+        1.05,
         [
+            ("Fixture responses are not authenticated.", {}),
             (
-                "An unsafe AI change cannot pass silently.",
-                {"size": 34, "bold": True, "color": WHITE},
-            )
+                "Merge blocking depends on GitHub repository rules "
+                "requiring the evaluation-gate check.",
+                {},
+            ),
+            (
+                "The workflow file alone does not enforce it. "
+                "Enforcement is currently unverified.",
+                {},
+            ),
+            (
+                "Shown here: a failed gate and a skipped "
+                "deployment-simulation job, not enforcement of merges "
+                "or real deployments.",
+                {},
+            ),
         ],
+        size=12,
+        color=MUTED,
         align=PP_ALIGN.CENTER,
+        line_gap=2,
     )
 
     _notes(
@@ -606,9 +644,10 @@ def slide_3_result(prs):
         "That gives people evidence for review. It does not "
         "automatically approve the policy.\n"
         "\n"
-        "The important result is simple:\n"
+        "The claim is deliberately narrow:\n"
         "\n"
-        "An unsafe AI change cannot pass silently.\n"
+        "AgentTrail detects tested routing regressions recorded in the "
+        "audit trail for the selected fixture snapshot.\n"
         "\n"
         "PRESENTER CUE: Stop there. No thank-you slide; keep "
         "future work for questions.\n"
@@ -619,12 +658,23 @@ def slide_3_result(prs):
         "PASS (measured_rate=1.0000, 12/12 escalated, exit 0); v2 "
         "gate FAIL (measured_rate=0.7500, 9/12, mismatches SYN-003 / "
         "SYN-015 / SYN-027, exit 1 — intentional controlled "
-        "regression).\n"
+        "regression, deliberately seeded in synthetic fixtures).\n"
+        "- Evaluation uses offline fixtures. Fixture responses are not "
+        "authenticated.\n"
+        "- Merge blocking depends on GitHub repository rules requiring "
+        "the evaluation-gate check. The workflow file alone does not "
+        "enforce it. Enforcement is currently unverified.\n"
+        "- What is shown is a failed gate and, in GitHub Actions, a "
+        "skipped deployment-simulation job (a no-op). Neither is "
+        "enforcement of merges or of real deployments; no real "
+        "deployment workflow exists.\n"
         "- Policy replay: 36 records evaluated, 35 unchanged, 1 flip "
         "— SYN-031 decide → escalate under the proposed 0.95 "
         "confidence threshold (stored confidence 0.9000).\n"
         "- Replay is read-only change-impact evidence, not approval "
-        "or rejection of the policy.",
+        "or rejection of the policy.\n"
+        "- AgentTrail is a demonstrator. It does not establish legal "
+        "compliance or production readiness.",
     )
 
 

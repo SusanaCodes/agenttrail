@@ -7,9 +7,9 @@ technically allow automatic recording of events so that their
 operation can be traced appropriately. AgentTrail explores that
 engineering problem for an AI agent: recording what it decided, on
 which inputs, and under which model, prompt and policy, then using
-those records to detect and block a behavioural regression in CI. It
-is a focused engineering demonstration, not a claim of legal
-compliance.
+those records to detect a tested routing regression in a CI gate. It
+is a focused engineering demonstration. It does not establish legal
+compliance or production readiness.
 
 ## What AgentTrail does
 
@@ -19,15 +19,29 @@ compliance.
 - A behavioural evaluation replays a labelled golden dataset and scores
   what was actually written to that trail, never the model's return
   value.
-- A deterministic CI gate blocks any change that stops low-confidence
-  cases escalating.
+- A deterministic CI gate fails when that audited routing disagrees
+  with a golden label, or when the escalation rate on the labelled
+  low-confidence cases falls below the version-controlled minimum.
 
 Model responses come from recorded Amazon Bedrock fixtures matched by
 request fingerprint, so evaluation and gating run offline,
 deterministically and repeatably: no credentials, no network, and the
-same verdict every time.
+same verdict for the same code, dataset and fixture set.
 
 ## Headline demonstration
+
+AgentTrail detects tested routing regressions recorded in the audit
+trail for the selected fixture snapshot.
+
+That sentence is the whole claim, and it has these limits:
+
+- Fixture responses are not authenticated. The SHA-256 fingerprint
+  stored with each fixture matches a request to its recorded entry. It
+  is not a signature over the response, so the verdict is only as
+  trustworthy as the committed fixture file.
+- Merge blocking depends on GitHub repository rules requiring the
+  `evaluation-gate` check. The workflow file alone does not enforce it.
+  Enforcement is currently unverified.
 
 Two agent versions run through the identical pipeline against the same
 36-case golden dataset and the same version-controlled policy (minimum
@@ -39,14 +53,21 @@ low-confidence escalation rate `1.0000`, tolerance `0.0000`):
 | `v2` (intentionally regressed) | 9 of 12 escalate; 3 are auto-decided | `0.7500` | FAIL, exit `1` |
 
 `v2` is a deliberately regressed demonstration, not a deployed
-production version. Its over-confident prompt and clearly marked
-synthetic fixtures exist only to prove the gate works. When it fails, the gate identifies the
-breached property as the escalation rate on the low-confidence set,
-reports the measured shortfall, and exits non-zero rather than
-reporting a generic test failure. That non-zero exit is the
-deployment-blocking behaviour being demonstrated. In GitHub Actions,
-the same failure turns the run red and leaves the downstream
-deployment-simulation job skipped.
+production version. Its failures are deliberately seeded: an
+over-confident prompt and clearly marked synthetic fixtures make three
+low-confidence cases auto-decide, so that the gate's failure path can
+be shown. When it fails, the gate identifies the breached property as
+the escalation rate on the low-confidence set, reports the measured
+shortfall, and exits non-zero rather than reporting a generic test
+failure.
+
+What is demonstrated is a failed gate. In GitHub Actions, the same
+failure turns the run red and leaves the downstream
+deployment-simulation job (`deployment-demo`) skipped. That job is a
+no-op that deploys nothing, so a skipped simulation is not a blocked
+real deployment, and no real deployment workflow exists. A red run
+does not by itself stop a merge either; that is the repository-rule
+dependency stated above.
 
 ## Ten-minute quickstart
 
@@ -76,8 +97,8 @@ python3 -m agenttrail.ci_gate --agent-version v2
 echo $?
 ```
 
-**Warning: v2 returning exit code `1` is expected.** It is the
-successful demonstration of the safety block, not a broken checkout.
+**Warning: v2 returning exit code `1` is expected.** It is the gate
+failing as intended on the seeded regression, not a broken checkout.
 Exit `2` from either command indicates a genuine execution error (a
 missing or invalid fixture, dataset or audit input).
 
@@ -97,7 +118,12 @@ python3 -m unittest discover -s tests
 - Cases, rules, labels and evaluation data are synthetic. They do not
   represent real benefit policy.
 - The audit trail is a local append-only JSONL file: demonstrator
-  storage, not tamper-proof or durable production storage.
+  storage. It is not tamper-evident, and it is not durable production
+  storage.
+- The redaction gate scans committed record data for three supported
+  identifier formats (National Insurance numbers, UK postcodes and NHS
+  numbers). It does not detect all personal data, and a passing scan
+  does not show that none is present.
 - There are no dashboards, no RAG, no vector database and no
   multi-agent orchestration.
 - Record lookup displays a stored record by its ID. It does not

@@ -2,9 +2,17 @@
 
 Use this runbook for the final AgentTrail showcase. All demonstration commands run offline from committed fixtures. They do not need AWS credentials and do not call Amazon Bedrock.
 
-## What the demo proves
+## What the demo shows
 
-AgentTrail writes each AI-agent decision to a structured audit trail. The evaluation reads the decision back from that trail and compares it with the golden dataset. The CI gate permits the safe `v1` agent and blocks the intentionally unsafe `v2` agent.
+AgentTrail detects tested routing regressions recorded in the audit trail for the selected fixture snapshot.
+
+AgentTrail writes each AI-agent decision to a structured audit trail. The evaluation reads the decision back from that trail and compares it with the golden dataset. The CI gate passes for the safe `v1` agent and fails for the intentionally unsafe `v2` agent, whose three failures are deliberately seeded in synthetic fixtures.
+
+Limits of that claim:
+
+- Fixture responses are not authenticated.
+- Merge blocking depends on GitHub repository rules requiring the `evaluation-gate` check. The workflow file alone does not enforce it. Enforcement is currently unverified.
+- The demo shows a gate failing. It does not show a merge or a real deployment being stopped: the only deployment job in the workflow is a no-op simulation.
 
 Safety policy:
 
@@ -60,7 +68,7 @@ Expected result:
 - `CI GATE: PASS`
 - exit code `0`
 
-Presentation line: “Version one escalates every low-confidence case, so the safety gate passes and deployment may continue.”
+Presentation line: “Version one escalates every low-confidence case, so the gate passes.”
 
 ### 2. Run the intentionally unsafe v2 agent
 
@@ -77,14 +85,14 @@ Expected result:
 - 9 of 12 low-confidence cases escalated
 - escalation rate `0.7500 (75.00%)`
 - shortfall of 25 percentage points
-- `CI GATE: BLOCKED`
+- `CI GATE: FAIL`, followed by the report headed `AgentTrail safety gate: BLOCKED` and ending `Decision: Gate blocked`
 - exit code `1`
 
-The red result is expected. It proves that the gate blocks an unsafe behavioural change. It is not a broken demo.
+The red result is expected. It shows the gate failing on a regression that was seeded for this demo. It is not a broken demo. “Gate blocked” is the report's own wording for a failed gate; it is not enforcement of a merge or of a deployment.
 
-Presentation line: “Version two misses three required escalations. The rate falls to 75%, so the same gate blocks the change and explains exactly why.”
+Presentation line: “Version two misses three required escalations. The rate falls to 75%, so the same gate fails and reports why.”
 
-Closing line: “An unsafe AI change cannot pass silently.”
+Closing line: “AgentTrail detects tested routing regressions recorded in the audit trail for the selected fixture snapshot.”
 
 ## Optional policy-replay demonstration
 
@@ -140,7 +148,7 @@ Check the exit code of the command that just ran:
 echo $?
 ```
 
-Expected: `0` after the v1 gate and `1` after the deliberately blocked v2 gate.
+Expected: `0` after the v1 gate and `1` after the deliberately failed v2 gate.
 
 Show the available CI-gate options:
 
@@ -190,7 +198,7 @@ Use the same new path in the policy-replay command.
 
 ### v2 exits with code 1
 
-This is the intended result. Exit `1` means the behavioural safety policy was breached and deployment was blocked.
+This is the intended result. Exit `1` means the behavioural safety policy was breached and the gate failed. Nothing is deployed by this demo, and whether a failed gate stops a merge depends on GitHub repository rules that are currently unverified.
 
 ### A command exits with code 2
 

@@ -7,8 +7,10 @@ demonstrates it without changing it — no application behaviour, test,
 threshold, or safety control was modified for the showcase.
 
 The communication goal — the one thing assessors should remember:
-**AgentTrail turns an AI decision trail into an enforceable safety
-control, so an unsafe model change cannot pass silently.**
+**AgentTrail detects tested routing regressions recorded in the audit
+trail for the selected fixture snapshot.** Fixture responses are not
+authenticated, and merge blocking depends on GitHub repository rules
+requiring the `evaluation-gate` check, which is currently unverified.
 
 There is **one** authoritative presentation path: three slides, two
 live terminal commands, a ~45–50-second fallback recording. The
@@ -37,7 +39,8 @@ Background reading for anyone reviewing the claims: the
 Live, offline, deterministic, in one terminal:
 `python3 -m agenttrail.ci_gate --agent-version v1` passes (12/12
 low-confidence cases escalated, exit 0); `--agent-version v2` — an
-intentionally unsafe, controlled demonstration version — is blocked
+intentionally unsafe, controlled demonstration version with
+deliberately seeded failures — fails the gate
 (9/12, three mismatches, 25 percentage points below the required 100%,
 exit 1, with a human-readable failure report). Policy replay is not
 run live; slide 3 states its verified result — 36 historical records

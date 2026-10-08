@@ -12,7 +12,7 @@ entry says so plainly.
 | [ADR-001](#adr-001--deliberately-narrow-showcase-scope) | Deliberately narrow showcase scope | Accepted | 2026-07-24 (project start) |
 | [ADR-002](#adr-002--forced-structured-tool-call-never-model-free-text) | Forced structured tool call, never model free text | Accepted | 2026-07-26 |
 | [ADR-003](#adr-003--pii-minimised-by-construction) | PII minimised by construction | Accepted | 2026-07-28 (backstop 2026-08-07) |
-| [ADR-004](#adr-004--append-only-jsonl-audit-trail-with-honest-guarantees) | Append-only JSONL audit trail with honest guarantees | Accepted | 2026-07-28 |
+| [ADR-004](#adr-004--append-only-jsonl-audit-trail-with-stated-limitations) | Append-only JSONL audit trail with stated limitations | Accepted | 2026-07-28 |
 | [ADR-005](#adr-005--recorded-fixtures-instead-of-live-model-calls-in-ci) | Recorded fixtures instead of live model calls in CI | Accepted | 2026-08-06 |
 | [ADR-006](#adr-006--behavioural-assertion-over-a-labelled-dataset) | Behavioural assertion over a labelled dataset | Accepted | 2026-08-06 |
 | [ADR-007](#adr-007--the-evaluation-verdict-comes-from-the-reopened-audit-trail) | The evaluation verdict comes from the reopened audit trail | Accepted | 2026-08-06 |
@@ -37,8 +37,9 @@ inspectable end to end.
 
 **Chosen approach.** Deliver one complete, connected safety pipeline:
 labelled golden dataset, one decide-or-escalate decision path,
-append-only audit trail, deterministic evaluation, an enforceable CI
-gate, and a staged demonstration that the gate blocks an unsafe change.
+append-only audit trail, deterministic evaluation, a CI gate whose
+verdict repository rules can require, and a staged demonstration in
+which the gate fails on a deliberately seeded unsafe change.
 
 **Alternatives rejected (deferred, not forgotten).** Dashboards; RAG;
 vector databases; multi-agent orchestration; MCP gateway integration.
@@ -131,8 +132,8 @@ and keep the control that remains deterministic and reviewable.
 
 **Consequences and trade-offs.** The backstop's scope is exactly three
 identifier formats — documented as such, never as universal PII
-detection. Synthetic data means the showcase proves the mechanism, not
-real-data governance (a stated Phase 2 concern).
+detection. Synthetic data means the showcase demonstrates the mechanism,
+not real-data governance (a stated Phase 2 concern).
 
 **Implementation evidence.**
 [`data/golden_cases.schema.json`](../data/golden_cases.schema.json);
@@ -142,7 +143,7 @@ revalidation);
 [`tests/test_redaction_gate.py`](../tests/test_redaction_gate.py);
 [redaction-gate.md](redaction-gate.md).
 
-## ADR-004 — Append-only JSONL audit trail with honest guarantees
+## ADR-004 — Append-only JSONL audit trail with stated limitations
 
 **Status:** Accepted. **Date:** 2026-07-28 (commit "Add append-only
 structured audit trail").
@@ -158,7 +159,8 @@ separators, ASCII-only); files created `0o600`; the writer exposes
 append-only behaviour with no rewrite, truncate, or delete API, and the
 separate readers
 ([`agenttrail/audit_reader.py`](../agenttrail/audit_reader.py)) never
-mutate the trail; a failed append means the decision is not returned. The documentation states the delivery guarantee honestly:
+mutate the trail; a failed append means the decision is not returned.
+The documentation states what is not guaranteed:
 not transactional, not exactly-once, no fsync, no tamper evidence,
 `O_APPEND` atomicity assumed only for local POSIX filesystems.
 
@@ -213,8 +215,10 @@ infrastructure).
 flaky, and a flaky gate trains operators to rerun and ignore it — which
 is worse than having no trusted gate at all.
 
-**Consequences and trade-offs.** Fixtures are a snapshot: they prove
-the recorded contract, not current live-model behaviour, and go stale
+**Consequences and trade-offs.** Fixtures are a snapshot: they hold
+one recorded contract, say nothing about current live-model behaviour,
+are not authenticated (the fingerprint matches a request to its entry;
+it does not sign the response), and go stale
 when the prompt, tool schema, model, or dataset changes. Contract
 changes fail loudly as fingerprint misses; silent model-revision drift
 does not, so periodic deliberate live evaluation remains necessary.
@@ -287,7 +291,7 @@ pass).
 
 **Rationale.** This is what makes the trail the architectural hinge:
 the gate's evidence is the record, so record-keeping failures are
-safety failures. A dedicated test proves the property is real — it
+safety failures. A dedicated test checks the property — it
 patches the audited call to return the opposite decision for every case
 while still writing truthful records, and the evaluation still passes.
 
@@ -350,7 +354,9 @@ without review, precisely under delivery pressure.
 
 **Chosen approach.** The policy — baseline 1.0000, tolerance 0.0000 —
 lives as constants in [`agenttrail/ci_gate.py`](../agenttrail/ci_gate.py)
-and is deliberately not overridable at any interface. Tests exercise
+and no interface overrides those thresholds (the CLI does accept
+`--dataset` and `--fixtures` paths, which change the evidence the
+thresholds are applied to, not the thresholds). Tests exercise
 boundary values only by injecting parameters into the pure
 `apply_policy()` function. Weakening or changing the policy requires a
 version-controlled source change — it cannot be made through an
