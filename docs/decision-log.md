@@ -217,9 +217,16 @@ is worse than having no trusted gate at all.
 
 **Consequences and trade-offs.** Fixtures are a snapshot: they hold
 one recorded contract, say nothing about current live-model behaviour,
-are not authenticated (the fingerprint matches a request to its entry;
-it does not sign the response), and go stale
-when the prompt, tool schema, model, or dataset changes. Contract
+are not authenticated, and go stale
+when the prompt, tool schema, model, or dataset changes.
+The request hash proves the replay request matches the stored request
+byte for byte. It does not bind the response to that request and does
+not prove that Bedrock produced the response. Fixture re-recording is a
+reviewed act that the gate cannot itself authenticate.
+Replay consistency and drift detection are planned as
+[AC-32](https://thesreflow.atlassian.net/browse/AC-32), which has not
+shipped; authenticating response provenance is a separate deferred
+control. Contract
 changes fail loudly as fingerprint misses; silent model-revision drift
 does not, so periodic deliberate live evaluation remains necessary.
 Re-recording changes the behavioural evidence evaluation relies on and

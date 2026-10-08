@@ -87,6 +87,39 @@ not tamper-evident and it is not durable storage. AgentTrail does not
 establish legal compliance (see [section 9](#9-eu-ai-act-article-12-mapping))
 or production readiness.
 
+**Known evaluation limitations.** Two limits apply to what the
+fixture-backed evaluation and gate can show.
+
+The low-confidence override is protected by unit tests. The
+fixture-backed behavioural evaluation does not exercise it, because no
+recorded response falls in the sub-threshold `decide` region.
+
+This gap concerns the fixture-backed behavioural evaluation, not the
+unit tests. Every recorded `decide` has confidence `0.9` or higher,
+against a threshold of `0.70`, so removing the override or lowering the
+threshold leaves the v1 gate passing. The unit tests do detect removal
+or weakening of the override (`tests/test_decision.py`,
+`tests/test_routing_policy.py`), and the workflow runs them before the
+gate command. A clearly labelled synthetic gate scenario that would
+close the gap is deferred to
+[AC-61](https://thesreflow.atlassian.net/browse/AC-61) and is not
+built; the recorded v1 fixtures are not to be altered to close it.
+Detail is in
+[ci-gate.md](ci-gate.md#known-coverage-gap-the-low-confidence-override).
+
+The request hash proves the replay request matches the stored request
+byte for byte. It does not bind the response to that request and does
+not prove that Bedrock produced the response. Fixture re-recording is a
+reviewed act that the gate cannot itself authenticate.
+
+Replay consistency and drift detection are the subject of the planned
+fixture-replay integrity gate,
+[AC-32](https://thesreflow.atlassian.net/browse/AC-32), which is in the
+backlog and has not shipped. Independent authentication of response
+provenance is a separate deferred control that AC-32 would not provide.
+Detail is in
+[model-fixtures.md](model-fixtures.md#what-the-request-hash-does-and-does-not-establish).
+
 ## 2. End-to-end operation
 
 The complete path, from a structured case to a CI verdict:
@@ -210,7 +243,9 @@ The recorded response is a single tool call:
 
 **Confidence handling.** The threshold override applies only to
 `decide` below 0.70; this decision is already `escalate`, so the model's
-confidence of 0.9 is preserved unchanged.
+confidence of 0.9 is preserved unchanged. The override is not exercised
+here, or by any other recorded response (see
+[section 1](#1-overview), known evaluation limitations).
 
 **The rationale.** Rendered locally from the allow-listed template with
 validated case fields — never from model text:
@@ -517,7 +552,20 @@ ASCII-only, NaN/Infinity rejected). Replay canonicalises the incoming
 request and looks up the fingerprint. The fixture's `case_id` is
 provenance only, never a lookup key. Any change to the prompt text,
 tool schema, model ID, inference configuration, or case input changes
-the fingerprint and produces an explicit miss.
+the canonical request fingerprint. With an unchanged fixture set, an
+incoming request whose fingerprint has no matching entry raises
+`FixtureNotFoundError`. This detects a request/fixture mismatch; it
+does not authenticate or protect the stored response.
+
+The request hash proves the replay request matches the stored request
+byte for byte. It does not bind the response to that request and does
+not prove that Bedrock produced the response. Fixture re-recording is a
+reviewed act that the gate cannot itself authenticate. The response is outside the hashed content, so an edited
+or hand-written response whose request and hash still agree is replayed
+as stored. Replay consistency and drift detection belong to the planned
+[AC-32](https://thesreflow.atlassian.net/browse/AC-32) gate, which has
+not shipped; authenticating response provenance is a separate deferred
+control.
 
 **No live fallback, no record-on-miss.** A miss raises
 `FixtureNotFoundError` and the run fails. Re-recording is a separate,
@@ -931,7 +979,18 @@ is deliberately absent from this list.
   contract validation currently runs inside the tests and the
   evaluation path; a distinct CI gate asserting fixture-set integrity
   independently of the behavioural gate would separate the two failure
-  classes at workflow level.
+  classes at workflow level. The planned fixture-replay integrity gate
+  is [AC-32](https://thesreflow.atlassian.net/browse/AC-32): replay
+  consistency and drift detection, not yet built.
+- **Authentication of fixture response provenance.** Nothing verifies
+  that Bedrock produced a stored response. That would need a control
+  separate from AC-32, such as signing or attesting responses at
+  recording time. No ticket for it is referenced in this repository.
+- **Gate-level coverage of the low-confidence override
+  ([AC-61](https://thesreflow.atlassian.net/browse/AC-61)).** A third,
+  clearly labelled synthetic scenario containing a sub-threshold
+  `decide`, kept distinct from the recorded v1 set and the seeded
+  agent-version `v2` demonstration. Not built.
 - **Additional behavioural safety properties.** The headline gate
   asserts one property. Candidates: no expected-`decide` case may
   escalate en masse (over-escalation), per-reason-code assertions,
