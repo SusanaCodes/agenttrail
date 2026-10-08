@@ -9,7 +9,8 @@ exit code, with these limits:
 
 - Fixture responses are not authenticated. The stored SHA-256
   fingerprint matches a request to its recorded entry. It is not a
-  signature over the response.
+  signature over the response (see
+  [model-fixtures.md](model-fixtures.md#what-the-request-hash-does-and-does-not-establish)).
 - Merge blocking depends on GitHub repository rules requiring the
   `evaluation-gate` check. The workflow file alone does not enforce it.
   Enforcement is currently unverified (see
@@ -28,14 +29,52 @@ that quietly makes the agent *decide* one of those cases is exactly the
 regression this project exists to detect. The gate fails on that change
 when it appears in the audited routing for the selected fixture
 snapshot; a regression the golden cases and fixtures do not exercise is
-not detected.
+not detected. One such regression is known and described under
+[Known coverage gap](#known-coverage-gap-the-low-confidence-override).
 
 ## Behaviour, not flags
 
 The gate never checks whether an escalation field or code path exists.
 It replays every golden case through the production decision path and
-measures what the agent actually did. A regression that leaves all the
-escalation machinery in place but stops using it still fails.
+measures what the agent actually did. A regression that changes the
+audited routing of a golden case fails, whether or not the escalation
+machinery is still in place. A regression that changes no audited
+routing for the recorded responses does not fail this gate.
+
+### Known coverage gap: the low-confidence override
+
+The low-confidence override is protected by unit tests. The
+fixture-backed behavioural evaluation does not exercise it, because no
+recorded response falls in the sub-threshold `decide` region.
+
+The override is the rule in `decide_case` that turns a `decide` whose
+confidence is strictly below the threshold (`0.70`) into `escalate`.
+The gap is in the fixture-backed behavioural evaluation only:
+
+- Every `decide` in the recorded v1 set has confidence `0.9` or `0.95`.
+  In the synthetic set for agent version `v2`, the three seeded
+  failures are `decide` at `0.92`. None is below `0.70`, so the
+  override never fires during an evaluation or gate run. Removing it,
+  or lowering the threshold to `0.0`, leaves the v1 gate at 12/12 PASS.
+- The unit tests do detect removal or weakening of the override:
+  `test_low_confidence_decide_becomes_escalate` and
+  `test_original_confidence_preserved_after_escalation` in
+  `tests/test_decision.py`, and
+  `test_v1_decide_strictly_below_threshold_escalates` and
+  `test_v1_threshold_is_the_production_threshold` in
+  `tests/test_routing_policy.py`. The workflow runs the unit tests as
+  a step of the `evaluation-gate` job, so the job fails at that step,
+  before the gate command runs.
+- Policy replay is a different tool and a different threshold. Under
+  the proposed routing policy `v2` (`0.95`) the recorded `SYN-031`
+  response (`decide` at `0.9`) is sub-threshold and flips to
+  `escalate`. That is change-impact analysis of a proposed policy. It
+  is not the gate, and it is unrelated to agent version `v2`.
+
+Gate-level coverage is deferred to
+[AC-61](https://thesreflow.atlassian.net/browse/AC-61), a separate,
+clearly labelled synthetic gate scenario that is not built yet. The
+recorded v1 fixtures must not be edited to close this gap.
 
 ## Why the audit trail is the evidence
 
