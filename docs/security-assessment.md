@@ -10,7 +10,7 @@ publish.
 | Assessment date | 8 October 2026 |
 | Commit the two reviews examined | `138cec050e0c176660c59dc98c3df90ac8e9a08d` (`main` on 12 September 2026) |
 | Current assessed baseline | `0556eeff9e783044b5b2f8057bb3a7a9172341be` (`main` on 8 October 2026) |
-| Later update | 9 October 2026: `CODEOWNERS` added under AC-35, and validation error messages fixed under AC-36. Entries changed by these are dated. The findings and the baseline are otherwise as assessed on 8 October |
+| Later update | 9 October 2026: `CODEOWNERS` added under AC-35, validation error messages fixed under AC-36, and the redaction gate's escape bypass fixed under AC-37. Entries changed by these are dated. The findings and the baseline are otherwise as assessed on 8 October |
 | Maintainer responsible for follow-up | Susana ([@SusanaCodes](https://github.com/SusanaCodes)) |
 
 The baseline is the commit this assessment was written against. It is
@@ -59,7 +59,7 @@ None of these is fixed at the baseline.
 | Finding | Review 1 | Review 2 | State at the baseline | Ticket |
 |---|---|---|---|---|
 | Rejected case-input and model-output values are echoed in exception messages, which reach stderr and CI logs | Low | Medium | Open at the baseline, where the project manual described the behaviour; that was a disclosure, not a fix. Update, 9 October 2026: fixed in [pull request #10](https://github.com/SusanaCodes/agenttrail/pull/10). Case-input, model-response, audit-record and fixture-entry validation errors no longer include rejected values or unexpected key names. Regression tests cover those validators and the gate and record-lookup error paths | [AC-36](https://thesreflow.atlassian.net/browse/AC-36) |
-| The redaction gate scans raw line text, so a supported identifier written with JSON `\uXXXX` escapes is not detected. Reported from the source; not executed in either review | n/r | Medium | Open | [AC-37](https://thesreflow.atlassian.net/browse/AC-37) |
+| The redaction gate scans raw line text, so a supported identifier written with JSON `\uXXXX` escapes is not detected. Reported from the source; not executed in either review | n/r | Medium | Open at the baseline. Update, 9 October 2026: fixed in [pull request #11](https://github.com/SusanaCodes/agenttrail/pull/11). The gate now also scans each decoded key and string value of every valid JSON line. Regression tests reproduce the bypass against the earlier gate and pass against the fix | [AC-37](https://thesreflow.atlassian.net/browse/AC-37) |
 | A non-UTF-8 audit trail raises an uncaught decoding error; record lookup then exits with the code documented as "no record found" | Low (probed) | Low | Open | [AC-38](https://thesreflow.atlassian.net/browse/AC-38) |
 | No `CODEOWNERS`; merge blocking depends on repository rules outside the repository | Medium | Informational | Open and unverified at the baseline. Update, 9 October 2026: a `CODEOWNERS` file is now on `main`; merge blocking is still unverified. See [Verification record](#verification-record) | [AC-35](https://thesreflow.atlassian.net/browse/AC-35) |
 | Evaluation does not check stored inputs, `model_id` or `prompt_version` against the configuration, and fixture metadata is not cross-checked | Low (probed) | Medium (part) | Open. The original ticket, AC-40, was closed unimplemented on 19 September 2026 | [AC-70](https://thesreflow.atlassian.net/browse/AC-70) |
@@ -135,10 +135,11 @@ the 7 October scan in the
 | Headline claim narrowed; absolute wording qualified (AC-43, AC-44) | `2799b58` | Documentation only |
 | Coverage gap and fixture-provenance limits documented (AC-45, AC-46) | `5d6c4d6` | Documentation only |
 | `CODEOWNERS` added for `agenttrail/`, `data/`, `fixtures/`, `tests/` and `.github/` (AC-35, in part), 9 October 2026 | `d8b67eb`, merged as `71047b9` | Supplies the missing file. Merge enforcement is unchanged and unverified |
+| Redaction gate scans decoded JSON keys and string values as well as raw text (AC-37), 9 October 2026 | [pull request #11](https://github.com/SusanaCodes/agenttrail/pull/11) | Fixes the JSON-escape bypass. Findings still carry file, line and category only |
 | Validation error messages no longer echo rejected values or unexpected key names (AC-36), 9 October 2026 | [pull request #10](https://github.com/SusanaCodes/agenttrail/pull/10) | Fixes the echoed-values finding. Message text only; validation behaviour, exception types and exit codes are unchanged |
 
-The AC-36 change is the only one in this list that fixes an
-implementation defect in the first findings table.
+The AC-36 and AC-37 changes are the only ones in this list that fix
+an implementation defect in the first findings table.
 
 ## Publication limitations
 
@@ -191,7 +192,7 @@ maintainer named above is responsible for each.
 | Item | Result | Evidence |
 |---|---|---|
 | Repository enforcement: required check, bypass off, `CODEOWNERS` (AC-35) | **Pending. Not verified.** | At the 8 October baseline there was no `CODEOWNERS` file. **Update, 9 October 2026:** `.github/CODEOWNERS` is on `main`, assigning `agenttrail/`, `data/`, `fixtures/`, `tests/` and `.github/` to the maintainer; evidence is merged [pull request #8](https://github.com/SusanaCodes/agenttrail/pull/8), merge commit `71047b932e729e3c5201cd00aa57795c7c2fbfc9`. Requiring the `evaluation-gate` check and disabling bypass remain unverified, pending activation after authorised publication. Mandatory code-owner approval is deferred because this is a sole-owner repository: `CODEOWNERS` records ownership and does not establish independent review. AC-35 remains open. The repository is private. Reads of branch protection and rulesets were refused with HTTP 403 on 7 and 8 October 2026, which says nothing about what is configured. A read of the branch summary on 8 October 2026 reported `protected: false`; that is one field, not a check of rules. The blocked throwaway pull request that AC-35 requires has not been run. Passing CI is not enforcement |
-| Manual redaction sweep of `docs/`, `tests/` and `showcase/` (AC-39) | **Pending. Not run.** | It is defined to run after the AC-37 fix, which is not merged |
+| Manual redaction sweep of `docs/`, `tests/` and `showcase/` (AC-39) | **Pending. Not run.** | It is defined to run after the AC-37 fix, which is dated 9 October 2026. The sweep itself has not been run |
 | Sweep for absolute claims (AC-44) | Done for the named documents | Commit `2799b58`. Retained uses are negations or statements checked against the code |
 | Code-freeze commit | **None recorded.** | The September freeze ticket (AC-42) was closed without a commit hash. The baseline above is not a freeze commit |
 | CI at the baseline | Pass | `evaluation-gate` and `deployment-demo` in [run 37841399551](https://github.com/SusanaCodes/agenttrail/actions/runs/37841399551); `secret-scan` and `dependency-audit` in [run 37841399583](https://github.com/SusanaCodes/agenttrail/actions/runs/37841399583). Both ran on `0556eef` |

@@ -623,7 +623,10 @@ The control hierarchy, strongest first:
    path stores no model free text.
 3. **Regex scanning as a backstop.** The redaction gate scans the raw
    line text of the committed structured JSONL data (golden dataset and
-   both fixture sets) for three structured UK identifier formats:
+   both fixture sets), and, where a line is valid JSON, each decoded
+   key and string value on its own, so an identifier written with JSON
+   `\uXXXX` escapes is still found. It looks for three structured UK
+   identifier formats:
    National Insurance numbers (excluding never-issued prefixes), UK
    postcode shapes, and NHS numbers (ten digits, deliberately without
    the modulus-11 checksum, because a mistyped NHS number is still

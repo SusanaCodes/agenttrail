@@ -27,6 +27,21 @@ fails CI. The scanner reads the **raw line text** of each target file,
 not parsed schema fields, so an identifier hiding in an unexpected or
 nested field is still found.
 
+Raw text alone is not enough for JSON. An identifier written with JSON
+`\uXXXX` escapes is restored by any JSON parser but does not appear in
+the raw line. So where a line is valid JSON, the scanner also decodes
+it with the standard JSON parser and scans **every decoded key and
+string value**, at any depth of nested objects and arrays:
+
+* Each key and each string value is scanned on its own. Separate fields
+  are never joined, so fragments in different fields do not add up to
+  an identifier.
+* Every key/value pair is scanned, including the earlier of two equal
+  keys, which a parser would normally drop.
+* A category found in both the raw text and the decoded content of a
+  line is reported once.
+* A line that is not valid JSON is scanned as raw text only, as before.
+
 ## What is checked — and only this
 
 | Category | Recognised syntax |
@@ -74,7 +89,7 @@ Exit codes:
 |---|---|---|
 | 0 | `REDACTION GATE: PASS` | Scan completed; no supported identifier found |
 | 1 | `REDACTION GATE: FAIL` | One or more supported identifiers detected |
-| 2 | `REDACTION GATE: ERROR` | Scan could not be completed (missing, unreadable, or directory target; no targets) |
+| 2 | `REDACTION GATE: ERROR` | Scan could not be completed (missing, unreadable, or directory target; no targets; or a line of valid JSON that the parser cannot decode, such as one nested too deeply) |
 
 A missing or unreadable configured target is an ERROR, never a silent
 PASS. The scan is fully offline: standard library only, no AWS,
@@ -89,9 +104,11 @@ never the matched text:
 finding: data/golden_cases.jsonl:12: national_insurance_number: [REDACTED]
 ```
 
-The match string is discarded inside the scanner; the `Finding` type
-has no field that could carry it, so CLI output, CI logs, exceptions,
-and reports cannot reproduce the detected value. Scanned paths and
+The match string and the decoded content are discarded inside the
+scanner; the `Finding` type has no field that could carry either, so
+CLI output, CI logs, exceptions, and reports do not reproduce the
+detected value. An undecodable line is reported by file, line number
+and exception class name only. Scanned paths and
 findings are sorted (path, line, category), so output is byte-identical
 on every run.
 
@@ -106,11 +123,18 @@ or equivalent softening.
 
 ## Known limitations
 
-* **False negatives:** identifiers split across lines, unconventional
-  separators (`AB.12.34.56.C`), values embedded in longer tokens, and
-  every identifier category not listed above are not detected. The
-  never-issued-prefix rule means a malformed NI-shaped string with an
-  invalid prefix is skipped.
+* **False negatives:** identifiers split across lines or across
+  fields, unconventional separators (`AB.12.34.56.C`), values embedded
+  in longer tokens, and every identifier category not listed above are
+  not detected. The never-issued-prefix rule means a malformed
+  NI-shaped string with an invalid prefix is skipped.
+* **Decoding goes one level deep.** JSON is decoded once per line. An
+  escaped identifier inside a line that is not valid JSON, or inside
+  JSON text that is itself stored as a string value, is not decoded
+  and is not detected. Other encodings (for example base64 or URL
+  encoding) are not decoded at all.
+* **No size or depth limits.** The scanner sets none of its own. A line
+  the standard parser refuses to decode stops the scan with exit 2.
 * **False positives:** any ten-digit number in a boundary-delimited
   position matches `nhs_number`; short letter/digit words can match
   postcode shapes. The structured record vocabulary (case refs, enums,

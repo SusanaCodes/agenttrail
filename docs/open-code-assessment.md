@@ -82,7 +82,7 @@ two series are different and a "Ticket N" must not be read as `AC-N`.
 | 1 | Named owner and maintenance plan | Verified in documents; `CODEOWNERS` pending on 7 October, on `main` since 9 October; required code-owner review deferred (AC-35 open) |
 | 2 | Security contact, intake route and triage process | Policy written; **intake route not active**, pending publication |
 | 3 | No secrets or sensitive operational detail, with enforced controls | Scans clean locally (7 October) and in one pull-request CI run (8 October); enforcement pending (required check, push protection) |
-| 4 | Secure-by-design baseline | Partial evidence; threat model pending (AC-57); open defects in claimed controls (AC-37, AC-38). The AC-36 defect was open on 7 October and was fixed on 9 October |
+| 4 | Secure-by-design baseline | Partial evidence; threat model pending (AC-57); an open defect in a claimed control (AC-38). The AC-36 and AC-37 defects were open on 7 October and were fixed on 9 October |
 | 5 | Automated hygiene | Dependabot alerts and security updates enabled; scanning workflow passed once on a pull request (8 October), not yet on `main` or on schedule; version updates configured, not active; trunk protections unverified and unenforced (AC-35) |
 | 6 | Patching expectations and ability to demonstrate them | Targets written; no track record yet |
 | 7 | Safe posture for unmaintained code | Process verified in documents; deployed-service part excluded |
@@ -484,8 +484,17 @@ errors no longer include rejected values or unexpected key names, and
 regression tests cover those validators and the gate and record-lookup
 error paths. The statement under
 [item 4](#4-secure-by-design-baseline) that the defect is not fixed
-describes the assessed commit and is kept as dated evidence. AC-37 and
-AC-38 are unchanged.
+describes the assessed commit and is kept as dated evidence.
+
+The AC-37 defect was also fixed on 9 October 2026, in
+[pull request #11](https://github.com/SusanaCodes/agenttrail/pull/11).
+The redaction gate now scans each decoded key and string value of
+every valid JSON line as well as the raw text, so an identifier written
+with JSON escapes is detected. The "known defect" recorded against the
+redaction gate under
+[item 3](#3-no-secrets-or-sensitive-operational-detail-with-enforced-controls)
+describes the assessed commit and is kept as dated evidence. The manual
+sweep under AC-39 has not been run. AC-38 is unchanged.
 
 ## Refreshed secret and history review
 
@@ -610,7 +619,7 @@ the GitHub REST documentation on 7 October 2026.
 |---|---|
 | Required check, bypass off and the blocked throwaway pull request. `CODEOWNERS` was added on 9 October 2026; mandatory code-owner approval is deferred | AC-35 |
 | Rejected values in exception messages. Fixed on 9 October 2026 | AC-36 |
-| Redaction gate bypass | AC-37 |
+| Redaction gate bypass. Fixed on 9 October 2026 | AC-37 |
 | Malformed audit encoding exit code | AC-38 |
 | Manual redaction sweep of `docs/`, `tests/`, `showcase/` | AC-39 |
 | Consolidated security assessment, which takes the dependency evidence above | AC-47 |
