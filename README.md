@@ -106,7 +106,7 @@ was 345 on 8 October.
 
 | Figure | Result |
 |---|---|
-| Unit tests | 395 run, all passing, exit `0` |
+| Unit tests | 430 run, all passing, exit `0` |
 | Golden cases | 36 labelled synthetic cases |
 | Protected cases in the main gate | 12: the cases labelled low-confidence, which must all escalate |
 | Agent `v1` | 12 of 12 protected cases escalate. Gate PASS, exit `0` |
@@ -191,7 +191,7 @@ missing or invalid fixture, dataset or audit input).
 ### Optional verification
 
 The full test suite runs in seconds and needs no setup. Expected:
-`Ran 395 tests`, output ending `OK`, exit `0`.
+`Ran 430 tests`, output ending `OK`, exit `0`.
 
 ```bash
 python3 -m unittest discover -s tests

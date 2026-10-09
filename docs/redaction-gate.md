@@ -33,14 +33,36 @@ the raw line. So where a line is valid JSON, the scanner also decodes
 it with the standard JSON parser and scans **every decoded key and
 string value**, at any depth of nested objects and arrays:
 
-* Each key and each string value is scanned on its own. Separate fields
-  are never joined, so fragments in different fields do not add up to
-  an identifier.
+* Each key and each string value is scanned on its own. Separate
+  strings are never joined, so fragments in different fields, or in
+  different layers, do not add up to an identifier.
 * Every key/value pair is scanned, including the earlier of two equal
   keys, which a parser would normally drop.
-* A category found in both the raw text and the decoded content of a
-  line is reported once.
+* A category found more than once on a line, by the raw scan or at any
+  decoded layer, is reported once.
 * A line that is not valid JSON is scanned as raw text only, as before.
+
+One decoding is not enough either, because the record data stores JSON
+inside JSON. Each Bedrock fixture entry keeps the case fields as JSON
+text in the string `request.messages[].content[].text`. Decoding the
+line restores that text, escapes and all; an escaped identifier inside
+it only appears when the text is parsed in turn. So **every decoded
+string that is itself a valid JSON document is decoded as well**, with
+the same parser and the same rules, and so are the strings found
+inside it, for as many layers as the data has:
+
+* Each string is first scanned as the text it is. Decoding adds to
+  that scan and never replaces it.
+* A string that is not valid JSON, such as ordinary prose or text that
+  only resembles JSON, is left to the text scan. Nothing interprets
+  escape sequences except the JSON parser, so escapes in such a string
+  are not decoded.
+* This applies to any key or string value at any depth, not only to the
+  fixture text field.
+* Decoding always ends. A string is only ever decoded from a longer
+  text: it either sat between quotes in that text or was its single
+  string token. Each further layer is therefore strictly shorter than
+  the one before, and the layers run out. No depth limit is involved.
 
 ## What is checked — and only this
 
@@ -89,7 +111,7 @@ Exit codes:
 |---|---|---|
 | 0 | `REDACTION GATE: PASS` | Scan completed; no supported identifier found |
 | 1 | `REDACTION GATE: FAIL` | One or more supported identifiers detected |
-| 2 | `REDACTION GATE: ERROR` | Scan could not be completed (missing, unreadable, or directory target; no targets; or a line of valid JSON that the parser cannot decode, such as one nested too deeply) |
+| 2 | `REDACTION GATE: ERROR` | Scan could not be completed (missing, unreadable, or directory target; no targets; or valid JSON that the parser refuses to decode, such as a document nested too deeply or holding an integer too long to convert, whether it is the line itself or a document stored in one of its strings) |
 
 A missing or unreadable configured target is an ERROR, never a silent
 PASS. The scan is fully offline: standard library only, no AWS,
@@ -107,8 +129,9 @@ finding: data/golden_cases.jsonl:12: national_insurance_number: [REDACTED]
 The match string and the decoded content are discarded inside the
 scanner; the `Finding` type has no field that could carry either, so
 CLI output, CI logs, exceptions, and reports do not reproduce the
-detected value. An undecodable line is reported by file, line number
-and exception class name only. Scanned paths and
+detected value. A line the parser refuses to decode, or one holding
+such a document in a string, is reported by file, line number and
+exception class name only. Scanned paths and
 findings are sorted (path, line, category), so output is byte-identical
 on every run.
 
@@ -128,13 +151,19 @@ or equivalent softening.
   in longer tokens, and every identifier category not listed above are
   not detected. The never-issued-prefix rule means a malformed
   NI-shaped string with an invalid prefix is skipped.
-* **Decoding goes one level deep.** JSON is decoded once per line. An
-  escaped identifier inside a line that is not valid JSON, or inside
-  JSON text that is itself stored as a string value, is not decoded
-  and is not detected. Other encodings (for example base64 or URL
-  encoding) are not decoded at all.
+* **Only JSON is decoded, and only whole documents.** A string is
+  decoded when the whole of it is a valid JSON document. An escaped
+  identifier is not detected in a line that is not valid JSON, in a
+  string that is not valid JSON, or in JSON that makes up only part of
+  a string, such as a document with prose before or after it. Other
+  encodings (for example base64 or URL encoding) are not decoded at
+  all.
 * **No size or depth limits.** The scanner sets none of its own. A line
-  the standard parser refuses to decode stops the scan with exit 2.
+  or a stored document that the standard parser refuses to decode stops
+  the scan with exit 2. What the parser refuses depends on the Python
+  version and its settings. A string holding nothing but a very long
+  run of digits or opening brackets is refused in the same way, since
+  it is read as the start of a JSON document.
 * **False positives:** any ten-digit number in a boundary-delimited
   position matches `nhs_number`; short letter/digit words can match
   postcode shapes. The structured record vocabulary (case refs, enums,

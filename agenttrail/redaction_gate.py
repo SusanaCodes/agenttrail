@@ -36,9 +36,13 @@ identifier in an unexpected or nested field is still found. Where a
 line is valid JSON it is also decoded with the standard JSON parser,
 and every decoded key and string value is scanned on its own, at any
 nesting depth: an identifier written with ``\\uXXXX`` escapes is
-restored by a parser but is invisible in the raw text. Separate fields
-are never joined, and a line that is not valid JSON is scanned as raw
-text only. Findings carry only the file, line number, and category —
+restored by a parser but is invisible in the raw text. A decoded string
+that is itself a valid JSON document — the fixtures store the case
+fields that way, in ``request.messages[].content[].text`` — is decoded
+and scanned in the same manner, layer by layer. Separate strings are
+never joined, a string that is not valid JSON is scanned as the text it
+is, and a line that is not valid JSON is scanned as raw text only.
+Findings carry only the file, line number, and category —
 the matched text and the decoded content are discarded during scanning
 and can never appear in output, exceptions, or reports.
 
@@ -150,31 +154,59 @@ def _scan_text(text):
     return found
 
 
+# Returned by _decode_json for text that is not a JSON document. A
+# sentinel, because None is itself a decoded JSON value.
+_NOT_JSON = object()
+
+
+def _decode_json(text, description):
+    """Decode text with the standard JSON parser, or return _NOT_JSON.
+
+    Raises RedactionScanError when the text cannot be decoded for a
+    reason other than not being JSON, because whatever it holds would
+    then go unscanned. The message names only the exception class.
+    """
+    try:
+        return json.loads(text, object_pairs_hook=_JsonObject)
+    except json.JSONDecodeError:
+        return _NOT_JSON
+    except (ValueError, RecursionError) as exc:
+        raise RedactionScanError(
+            f"{description} could not be decoded for scanning: "
+            f"{exc.__class__.__name__}"
+        ) from None
+
+
 def _decoded_strings(text):
     """Yield every decoded key and string value of a JSON line.
 
-    Yields nothing when the line is not valid JSON. Raises
-    RedactionScanError when the line cannot be decoded for another
-    reason, because a scan of its raw text alone would be incomplete.
+    A yielded string that is itself a valid JSON document is decoded in
+    turn, and its keys and string values are yielded as well, to any
+    number of layers. Yields nothing when the line is not valid JSON.
+    Raises RedactionScanError when the line, or a JSON document stored
+    in one of its strings, cannot be decoded for another reason.
+
+    Termination: a string is only ever decoded from a longer text. A
+    key or string value sits between quotes in the text it was decoded
+    from, and a string that is a whole document is that text's single
+    string token, so each further layer is strictly shorter than the
+    last and the layers run out. No depth limit is involved.
     """
-    try:
-        document = json.loads(text, object_pairs_hook=_JsonObject)
-    except json.JSONDecodeError:
+    document = _decode_json(text, "line")
+    if document is _NOT_JSON:
         return
-    except (ValueError, RecursionError) as exc:
-        raise RedactionScanError(
-            f"line could not be decoded for scanning: "
-            f"{exc.__class__.__name__}"
-        ) from None
     # Iterative walk: no recursion of our own, whatever the nesting.
     pending = [document]
     while pending:
         node = pending.pop()
         if isinstance(node, str):
             yield node
+            embedded = _decode_json(node, "JSON stored in a string")
+            if embedded is not _NOT_JSON:
+                pending.append(embedded)
         elif isinstance(node, _JsonObject):
             for key, value in node:
-                yield key
+                pending.append(key)
                 pending.append(value)
         elif isinstance(node, list):
             pending.extend(node)
@@ -184,7 +216,8 @@ def scan_line(text):
     """Return the sorted categories detected in one line of text.
 
     Scans the raw text, then each decoded JSON key and string value
-    separately. A category found by both is reported once. Neither the
+    separately, including those of JSON documents stored inside strings.
+    A category found more than once is reported once. Neither the
     matched text nor the decoded content leaves this function.
     """
     found = _scan_text(text)

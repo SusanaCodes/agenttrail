@@ -625,7 +625,10 @@ The control hierarchy, strongest first:
    line text of the committed structured JSONL data (golden dataset and
    both fixture sets), and, where a line is valid JSON, each decoded
    key and string value on its own, so an identifier written with JSON
-   `\uXXXX` escapes is still found. It looks for three structured UK
+   `\uXXXX` escapes is still found. A decoded string that is itself a
+   valid JSON document is decoded and scanned the same way, layer by
+   layer; the fixtures store the case fields like that, as JSON text
+   inside a message string. It looks for three structured UK
    identifier formats:
    National Insurance numbers (excluding never-issued prefixes), UK
    postcode shapes, and NHS numbers (ten digits, deliberately without
@@ -655,7 +658,9 @@ supported identifier formats in the files it is pointed at, and nothing
 else. It is not universal PII detection: names, arbitrary addresses,
 email addresses, phone numbers, identifiers split across lines or with
 unconventional separators, and values embedded in longer tokens are not
-detected. Runtime audit trails are git-ignored and are scanned only if
+detected. Only JSON is decoded: an identifier hidden by another
+encoding, such as base64, or by escapes in text that is not a valid
+JSON document, is not detected. Runtime audit trails are git-ignored and are scanned only if
 a path is passed explicitly. Do not read a passing scan as "AgentTrail
 records contain no personal data" — no such blanket guarantee is made
 or possible.
