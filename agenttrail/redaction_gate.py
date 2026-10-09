@@ -32,10 +32,15 @@ scanned data is full of such tokens and they cannot be a conventionally
 presented identifier.
 
 The scan reads raw line text, not parsed schema fields, so an
-identifier in an unexpected or nested field is still found. Findings
-carry only the file, line number, and category — the matched text is
-discarded during scanning and can never appear in output, exceptions,
-or reports.
+identifier in an unexpected or nested field is still found. Where a
+line is valid JSON it is also decoded with the standard JSON parser,
+and every decoded key and string value is scanned on its own, at any
+nesting depth: an identifier written with ``\\uXXXX`` escapes is
+restored by a parser but is invisible in the raw text. Separate fields
+are never joined, and a line that is not valid JSON is scanned as raw
+text only. Findings carry only the file, line number, and category —
+the matched text and the decoded content are discarded during scanning
+and can never appear in output, exceptions, or reports.
 
 This gate provides deterministic detection for the supported structured
 identifier formats. It does not prove that arbitrary personal data is
@@ -47,6 +52,7 @@ identifiers detected, 2 the scan could not be completed.
 """
 
 import argparse
+import json
 import re
 import sys
 from dataclasses import dataclass
@@ -122,8 +128,16 @@ class Finding:
     category: str
 
 
-def scan_line(text):
-    """Return the sorted categories detected in one line of text.
+class _JsonObject(list):
+    """A decoded JSON object kept as its (key, value) pairs.
+
+    Pairs, not a dict: a dict would silently drop the earlier of two
+    equal keys, and with it a value the scan has to see.
+    """
+
+
+def _scan_text(text):
+    """Categories detected in one piece of text, as a set.
 
     Match objects never escape this function; only category names do.
     """
@@ -133,6 +147,49 @@ def scan_line(text):
             if extra_check is None or extra_check(match):
                 found.add(category)
                 break
+    return found
+
+
+def _decoded_strings(text):
+    """Yield every decoded key and string value of a JSON line.
+
+    Yields nothing when the line is not valid JSON. Raises
+    RedactionScanError when the line cannot be decoded for another
+    reason, because a scan of its raw text alone would be incomplete.
+    """
+    try:
+        document = json.loads(text, object_pairs_hook=_JsonObject)
+    except json.JSONDecodeError:
+        return
+    except (ValueError, RecursionError) as exc:
+        raise RedactionScanError(
+            f"line could not be decoded for scanning: "
+            f"{exc.__class__.__name__}"
+        ) from None
+    # Iterative walk: no recursion of our own, whatever the nesting.
+    pending = [document]
+    while pending:
+        node = pending.pop()
+        if isinstance(node, str):
+            yield node
+        elif isinstance(node, _JsonObject):
+            for key, value in node:
+                yield key
+                pending.append(value)
+        elif isinstance(node, list):
+            pending.extend(node)
+
+
+def scan_line(text):
+    """Return the sorted categories detected in one line of text.
+
+    Scans the raw text, then each decoded JSON key and string value
+    separately. A category found by both is reported once. Neither the
+    matched text nor the decoded content leaves this function.
+    """
+    found = _scan_text(text)
+    for decoded in _decoded_strings(text):
+        found |= _scan_text(decoded)
     return tuple(sorted(found))
 
 
@@ -149,7 +206,13 @@ def scan_file(path):
     try:
         with open(path, encoding="utf-8") as f:
             for line_number, line in enumerate(f, start=1):
-                for category in scan_line(line):
+                try:
+                    categories = scan_line(line)
+                except RedactionScanError as exc:
+                    raise RedactionScanError(
+                        f"{path}:{line_number}: {exc}"
+                    ) from None
+                for category in categories:
                     findings.append(
                         Finding(
                             path=str(path),
