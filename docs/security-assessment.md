@@ -10,6 +10,7 @@ publish.
 | Assessment date | 8 October 2026 |
 | Commit the two reviews examined | `138cec050e0c176660c59dc98c3df90ac8e9a08d` (`main` on 12 September 2026) |
 | Current assessed baseline | `0556eeff9e783044b5b2f8057bb3a7a9172341be` (`main` on 8 October 2026) |
+| Later update | 9 October 2026: `CODEOWNERS` added under AC-35. Entries changed by it are dated. The findings and the baseline are otherwise as assessed on 8 October |
 | Maintainer responsible for follow-up | Susana ([@SusanaCodes](https://github.com/SusanaCodes)) |
 
 The baseline is the commit this assessment was written against. It is
@@ -59,7 +60,7 @@ None of these is fixed at the baseline.
 | Rejected case-input and model-output values are echoed in exception messages, which reach stderr and CI logs | Low | Medium | Open. The behaviour is now described in the project manual; that is a disclosure, not a fix | [AC-36](https://thesreflow.atlassian.net/browse/AC-36) |
 | The redaction gate scans raw line text, so a supported identifier written with JSON `\uXXXX` escapes is not detected. Reported from the source; not executed in either review | n/r | Medium | Open | [AC-37](https://thesreflow.atlassian.net/browse/AC-37) |
 | A non-UTF-8 audit trail raises an uncaught decoding error; record lookup then exits with the code documented as "no record found" | Low (probed) | Low | Open | [AC-38](https://thesreflow.atlassian.net/browse/AC-38) |
-| No `CODEOWNERS`; merge blocking depends on repository rules outside the repository | Medium | Informational | Open and unverified; see [Verification record](#verification-record) | [AC-35](https://thesreflow.atlassian.net/browse/AC-35) |
+| No `CODEOWNERS`; merge blocking depends on repository rules outside the repository | Medium | Informational | Open and unverified at the baseline. Update, 9 October 2026: a `CODEOWNERS` file is now on `main`; merge blocking is still unverified. See [Verification record](#verification-record) | [AC-35](https://thesreflow.atlassian.net/browse/AC-35) |
 | Evaluation does not check stored inputs, `model_id` or `prompt_version` against the configuration, and fixture metadata is not cross-checked | Low (probed) | Medium (part) | Open. The original ticket, AC-40, was closed unimplemented on 19 September 2026 | [AC-70](https://thesreflow.atlassian.net/browse/AC-70) |
 | The decision returned to a caller can differ from the recorded decision without failing evaluation | n/r | Medium (shown by an existing test) | Open. The trail-derived verdict is by design; the correspondence control is absent | [AC-62](https://thesreflow.atlassian.net/browse/AC-62) |
 | Audit writes follow a symlink at the trail path, and an existing file keeps wider permissions | Medium for a pilot, Low for the demonstration (probed) | Medium | Open | [AC-71](https://thesreflow.atlassian.net/browse/AC-71) |
@@ -103,7 +104,7 @@ approval.
 | Fixture authenticity | The request hash covers the request only. A stored response can be edited or written by hand and still validates. The gate cannot tell a recording from a hand-built set | Review 1 High; Review 2 Medium | [AC-64](https://thesreflow.atlassian.net/browse/AC-64). [AC-32](https://thesreflow.atlassian.net/browse/AC-32) covers replay integrity and drift, not authenticity. Wording: [model-fixtures.md](model-fixtures.md#what-the-request-hash-does-and-does-not-establish) |
 | Trail integrity | The trail is a local file with no record authentication. A well-formed forged or edited record validates, and removed records go unnoticed outside a fresh evaluation. It is not tamper-evident and not durable | Review 1 Medium for a pilot, Low for the demonstration; Review 2 Medium | [AC-65](https://thesreflow.atlassian.net/browse/AC-65); path handling under [AC-71](https://thesreflow.atlassian.net/browse/AC-71) |
 | Model-owned confidence | Routing depends on a confidence value the model reports about itself. It is uncalibrated, and nothing independent forces escalation when evidence is missing | Review 1 Medium for a pilot, Low for the demonstration; Review 2 Informational | None. No improvement is ticketed |
-| Self-referential gate evidence | The fixtures, labels, policy constants, version registry and workflow that define a pass are changed by the same pull request the gate judges. Review of that change, and repository rules, are the only controls, and neither is verifiable from the repository | Review 1 Medium; Review 2 Informational and residual | [AC-35](https://thesreflow.atlassian.net/browse/AC-35) for repository rules and `CODEOWNERS`. Nothing removes the dependence on review |
+| Self-referential gate evidence | The fixtures, labels, policy constants, version registry and workflow that define a pass are changed by the same pull request the gate judges. Review of that change, and repository rules, are the only controls, and neither is verifiable from the repository | Review 1 Medium; Review 2 Informational and residual | [AC-35](https://thesreflow.atlassian.net/browse/AC-35) for repository rules and `CODEOWNERS`. Nothing removes the dependence on review. The `CODEOWNERS` file added on 9 October 2026 records ownership; in a sole-owner repository it does not establish independent review |
 
 ## Controls confirmed working
 
@@ -132,6 +133,7 @@ the 7 October scan in the
 | Action pins updated by two Dependabot pull requests | `b63ab64`, `37ee14e` | None |
 | Headline claim narrowed; absolute wording qualified (AC-43, AC-44) | `2799b58` | Documentation only |
 | Coverage gap and fixture-provenance limits documented (AC-45, AC-46) | `5d6c4d6` | Documentation only |
+| `CODEOWNERS` added for `agenttrail/`, `data/`, `fixtures/`, `tests/` and `.github/` (AC-35, in part), 9 October 2026 | `d8b67eb`, merged as `71047b9` | Supplies the missing file. Merge enforcement is unchanged and unverified |
 
 No change in this list fixes an implementation defect in the first
 findings table.
@@ -186,7 +188,7 @@ maintainer named above is responsible for each.
 
 | Item | Result | Evidence |
 |---|---|---|
-| Repository enforcement: required check, bypass off, `CODEOWNERS` (AC-35) | **Pending. Not verified.** | There is no `CODEOWNERS` file at the baseline. The repository is private. Reads of branch protection and rulesets were refused with HTTP 403 on 7 and 8 October 2026, which says nothing about what is configured. A read of the branch summary on 8 October 2026 reported `protected: false`; that is one field, not a check of rules. The blocked throwaway pull request that AC-35 requires has not been run. Passing CI is not enforcement |
+| Repository enforcement: required check, bypass off, `CODEOWNERS` (AC-35) | **Pending. Not verified.** | At the 8 October baseline there was no `CODEOWNERS` file. **Update, 9 October 2026:** `.github/CODEOWNERS` is on `main`, assigning `agenttrail/`, `data/`, `fixtures/`, `tests/` and `.github/` to the maintainer; evidence is merged [pull request #8](https://github.com/SusanaCodes/agenttrail/pull/8), merge commit `71047b932e729e3c5201cd00aa57795c7c2fbfc9`. Requiring the `evaluation-gate` check and disabling bypass remain unverified, pending activation after authorised publication. Mandatory code-owner approval is deferred because this is a sole-owner repository: `CODEOWNERS` records ownership and does not establish independent review. AC-35 remains open. The repository is private. Reads of branch protection and rulesets were refused with HTTP 403 on 7 and 8 October 2026, which says nothing about what is configured. A read of the branch summary on 8 October 2026 reported `protected: false`; that is one field, not a check of rules. The blocked throwaway pull request that AC-35 requires has not been run. Passing CI is not enforcement |
 | Manual redaction sweep of `docs/`, `tests/` and `showcase/` (AC-39) | **Pending. Not run.** | It is defined to run after the AC-37 fix, which is not merged |
 | Sweep for absolute claims (AC-44) | Done for the named documents | Commit `2799b58`. Retained uses are negations or statements checked against the code |
 | Code-freeze commit | **None recorded.** | The September freeze ticket (AC-42) was closed without a commit hash. The baseline above is not a freeze commit |
