@@ -7,8 +7,8 @@ category of failure, and the allowed set.
 
 Mirrors ``test_error_messages_never_echo_rejected_values`` in
 tests/test_audit.py for the decision and golden-dataset paths, extends
-it to unexpected audit-record keys, and drives the real ``ci_gate`` and
-``record_view`` CLI error paths end to end. Every marker
+it to unexpected audit-record keys and to fixture entries, and drives
+the real ``ci_gate`` and ``record_view`` CLI error paths end to end. Every marker
 below is synthetic, and all test data lives in temporary directories:
 nothing here reads or writes the committed dataset or fixtures.
 """
@@ -33,6 +33,12 @@ from agenttrail.decision import (
     decide_case,
     validate_case,
 )
+from agenttrail.fixtures import (
+    FIXTURE_FORMAT_VERSION,
+    FixtureValidationError,
+    load_fixtures,
+    validate_fixture_entry,
+)
 from agenttrail.golden import GoldenDatasetError, load_labelled_cases
 from support_fixtures import no_network, tool_response
 from test_ci_gate_regression import twelve_low_cases
@@ -49,6 +55,9 @@ MODEL_KEY_MARKER = "zz_model_key_71aa0e_marker"
 MODEL_TOOL_MARKER = "zz_model_tool_5d44c7_marker"
 AUDIT_KEY_MARKER = "zz_audit_key_e8b302_marker"
 AUDIT_VALUE_MARKER = "ZZAUDITVALUE-26dd7c-MARKER"
+FIXTURE_FIELD_MARKER = "zz_fixture_field_3fa9b1_marker"
+FIXTURE_VALUE_MARKER = "ZZFIXTUREVALUE-b7c450-MARKER"
+FIXTURE_VERSION_MARKER = "ZZFIXTUREVERSION-0d6e82-MARKER"
 # Out-of-range confidence with a digit run no real message contains.
 MODEL_NUMBER_MARKER = 73190.4682
 MODEL_NUMBER_TEXT = "73190"
@@ -62,6 +71,9 @@ ALL_MARKERS = (
     MODEL_NUMBER_TEXT,
     AUDIT_KEY_MARKER,
     AUDIT_VALUE_MARKER,
+    FIXTURE_FIELD_MARKER,
+    FIXTURE_VALUE_MARKER,
+    FIXTURE_VERSION_MARKER,
 )
 
 VALID_CASE = {
@@ -235,6 +247,81 @@ class TestAuditValidationErrorHygiene(unittest.TestCase):
         self.assertIn(DECISION_ID_1, out)
 
 
+def _plant_unexpected_fixture_field(entry):
+    entry[FIXTURE_FIELD_MARKER] = FIXTURE_VALUE_MARKER
+
+
+def _plant_unsupported_fixture_version(entry):
+    entry["fixture_format_version"] = FIXTURE_VERSION_MARKER
+
+
+class TestFixtureValidationErrorHygiene(unittest.TestCase):
+    """A fixture entry with an unexpected field or an unsupported version."""
+
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.tmp.cleanup)
+        _, self.fixtures = build_synthetic(
+            Path(self.tmp.name), twelve_low_cases()
+        )
+
+    def first_entry(self):
+        first_line = self.fixtures.read_text(encoding="utf-8").splitlines()[0]
+        return json.loads(first_line)
+
+    def rewrite_first_entry(self, mutate):
+        lines = self.fixtures.read_text(encoding="utf-8").splitlines()
+        entry = json.loads(lines[0])
+        mutate(entry)
+        lines[0] = json.dumps(entry, sort_keys=True)
+        self.fixtures.write_text("\n".join(lines) + "\n", encoding="utf-8")
+
+    def assert_clean(self, text, label):
+        for marker in ALL_MARKERS:
+            self.assertNotIn(marker, text, label)
+
+    def test_unmodified_temporary_fixtures_are_valid(self):
+        # Guards the tests below: only the planted content makes them fail.
+        self.assertEqual(
+            validate_fixture_entry(self.first_entry()), self.first_entry()
+        )
+        self.assertEqual(len(load_fixtures(self.fixtures)), 12)
+
+    def test_unexpected_fixture_field_is_not_echoed(self):
+        entry = self.first_entry()
+        _plant_unexpected_fixture_field(entry)
+        with self.assertRaises(FixtureValidationError) as ctx:
+            validate_fixture_entry(entry)
+        message = str(ctx.exception)
+        self.assert_clean(message, "validator, unexpected field")
+        self.assertIn("unexpected", message)
+        # The known, allowed fields are still listed.
+        self.assertIn("request_sha256", message)
+
+    def test_unsupported_fixture_version_is_not_echoed(self):
+        entry = self.first_entry()
+        _plant_unsupported_fixture_version(entry)
+        with self.assertRaises(FixtureValidationError) as ctx:
+            validate_fixture_entry(entry)
+        message = str(ctx.exception)
+        self.assert_clean(message, "validator, version")
+        # The field and the supported version are still identified.
+        self.assertIn("fixture_format_version", message)
+        self.assertIn(FIXTURE_FORMAT_VERSION, message)
+
+    def test_load_fixtures_does_not_echo_rejected_content(self):
+        for label, mutate in (
+            ("unexpected field", _plant_unexpected_fixture_field),
+            ("version", _plant_unsupported_fixture_version),
+        ):
+            original = self.fixtures.read_text(encoding="utf-8")
+            self.rewrite_first_entry(mutate)
+            with self.assertRaises(FixtureValidationError) as ctx:
+                load_fixtures(self.fixtures)
+            self.fixtures.write_text(original, encoding="utf-8")
+            self.assert_clean(str(ctx.exception), f"loader, {label}")
+
+
 class TestGateErrorPathHygiene(unittest.TestCase):
     """The real ci_gate CLI, fed temporary rejected inputs."""
 
@@ -326,6 +413,16 @@ class TestGateErrorPathHygiene(unittest.TestCase):
 
         self.rewrite_first_line(self.fixtures, mutate)
         self.assert_gate_error_is_clean("model tool name")
+
+    def test_unexpected_fixture_field_is_not_exposed(self):
+        self.rewrite_first_line(self.fixtures, _plant_unexpected_fixture_field)
+        self.assert_gate_error_is_clean("fixture field")
+
+    def test_unsupported_fixture_version_is_not_exposed(self):
+        self.rewrite_first_line(
+            self.fixtures, _plant_unsupported_fixture_version
+        )
+        self.assert_gate_error_is_clean("fixture version")
 
 
 if __name__ == "__main__":

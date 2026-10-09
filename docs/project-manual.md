@@ -383,15 +383,16 @@ pattern-constrained structured fields only (see
 `0o600` permissions where the platform honours the mode. The GitHub
 Actions workflow uses `permissions: contents: read`, pins third-party
 actions to full commit SHAs, requests no secrets, and needs no AWS
-access. Case-input, model-response and audit-record validation errors
-name the known field, the kind of failure and the allowed set. They do
-not echo a rejected value or an unexpected key name, and redaction-gate
-findings never contain the matched text. Tests cover those three
-validators and the gate and record-lookup error paths. Other error
-paths have not been brought to the same standard: fixture-set
-validation still names unexpected fields and an unsupported format
-version, and operator-supplied paths and configuration values, such as
-a confidence threshold, appear in error messages.
+access. Case-input, model-response, audit-record and fixture-entry
+validation errors name the known field, the kind of failure and the
+allowed set or supported version. They do not echo a rejected value or
+an unexpected key name, and redaction-gate findings never contain the
+matched text. Tests cover those four validators and the gate and
+record-lookup error paths. What can still appear in an error message
+is bounded or operator-supplied: an identifier that has already passed
+its pattern check (a case reference or a request fingerprint), a file
+path and line number, operating-system error text, and a configuration
+value such as a confidence threshold.
 
 **Durability and concurrency limitations (honest).** The trail is
 append-only JSONL with a single `O_APPEND` write per record. It is
