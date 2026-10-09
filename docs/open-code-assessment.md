@@ -14,6 +14,8 @@ was re-gathered for them. Those changes were then committed as
 `b19f94d98efc54e69f8dbdd01c4eff2efc826c82`, and GitHub Actions ran on
 that commit on 8 October 2026. That later evidence is kept apart in
 [Evidence update: 8 October 2026](#evidence-update-8-october-2026).
+A later change under AC-35 is recorded in
+[Evidence update: 9 October 2026](#evidence-update-9-october-2026).
 Everything else in this document is the 7 October local evidence
 unless it says otherwise.
 
@@ -77,7 +79,7 @@ two series are different and a "Ticket N" must not be read as `AC-N`.
 
 | # | Minimum-standard item | Status |
 |---|---|---|
-| 1 | Named owner and maintenance plan | Verified in documents; `CODEOWNERS` pending (AC-35) |
+| 1 | Named owner and maintenance plan | Verified in documents; `CODEOWNERS` pending on 7 October, on `main` since 9 October; required code-owner review deferred (AC-35 open) |
 | 2 | Security contact, intake route and triage process | Policy written; **intake route not active**, pending publication |
 | 3 | No secrets or sensitive operational detail, with enforced controls | Scans clean locally (7 October) and in one pull-request CI run (8 October); enforcement pending (required check, push protection) |
 | 4 | Secure-by-design baseline | Partial evidence; threat model pending (AC-57); open defects in claimed controls (AC-36, AC-37, AC-38) |
@@ -100,11 +102,12 @@ two series are different and a "Ticket N" must not be read as `AC-N`.
 | Support duration: head of `main` only, next review 7 January 2027, then three-monthly | [maintenance.md](maintenance.md#support-scope-and-review-date) | Susana | Verified | Renew or retire at each review |
 | Dependency ownership and review frequency | [maintenance.md](maintenance.md#dependencies) | Susana | Verified | None |
 | Handover arrangements | [maintenance.md](maintenance.md#handover) | Susana | Verified | None |
-| `CODEOWNERS` file and required code-owner review | None in the repository | Susana | Pending | AC-35 owns this. Not duplicated here |
+| `CODEOWNERS` file and required code-owner review | None in the repository on 7 October. Added on 9 October 2026: [CODEOWNERS](../.github/CODEOWNERS), see the [9 October update](#evidence-update-9-october-2026) | Susana | File present. Required code-owner review deferred | AC-35 owns this and remains open. Not duplicated here |
 
 The guidance asks for ownership to be "visible through CODEOWNERS
-files or similar". The README and maintenance document are the
-"similar" evidence today. There is one maintainer and no deputy, which
+files or similar". On 7 October the README and maintenance document
+were the "similar" evidence; a `CODEOWNERS` file has been on `main`
+since 9 October 2026. There is one maintainer and no deputy, which
 is a real limit on resilience and is stated in both documents.
 
 ### 2. Security contact, intake route and triage process
@@ -455,6 +458,25 @@ What it does not establish, and what stays pending:
   version updates and Dependabot alerts on the locks all wait for the
   files to be on `main`.
 
+## Evidence update: 9 October 2026
+
+This section records one change made under AC-35 after the assessment
+date. Nothing else in this document was re-gathered for it.
+
+| Item | Result |
+|---|---|
+| `CODEOWNERS` file | On `main`. [.github/CODEOWNERS](../.github/CODEOWNERS) assigns `agenttrail/`, `data/`, `fixtures/`, `tests/` and `.github/` to `@SusanaCodes` |
+| Evidence | Merged [pull request #8](https://github.com/SusanaCodes/agenttrail/pull/8), merge commit `71047b932e729e3c5201cd00aa57795c7c2fbfc9` |
+| Required `evaluation-gate` check and bypass controls | **Unverified.** Pending activation after authorised publication |
+| Blocked throwaway pull request (AC-35's proof) | **Not performed** |
+| Mandatory code-owner approval | **Deferred.** This is a sole-owner repository |
+| AC-35 | Remains open |
+
+`CODEOWNERS` records ownership. It does not establish independent
+review: there is one maintainer and no second reviewer. The trunk
+protection rows under [item 5](#5-automated-hygiene) are unchanged and
+still unverified and unenforced.
+
 ## Refreshed secret and history review
 
 The September 2026
@@ -576,7 +598,7 @@ the GitHub REST documentation on 7 October 2026.
 
 | Gap | Ticket |
 |---|---|
-| Required check, bypass off, `CODEOWNERS` and code-owner review | AC-35 |
+| Required check, bypass off and the blocked throwaway pull request. `CODEOWNERS` was added on 9 October 2026; mandatory code-owner approval is deferred | AC-35 |
 | Rejected values in exception messages | AC-36 |
 | Redaction gate bypass | AC-37 |
 | Malformed audit encoding exit code | AC-38 |
