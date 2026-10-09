@@ -1,0 +1,6 @@
+# Repository ownership. Required approvals are configured separately in GitHub.
+/agenttrail/ @SusanaCodes
+/data/       @SusanaCodes
+/fixtures/   @SusanaCodes
+/tests/      @SusanaCodes
+/.github/    @SusanaCodes
