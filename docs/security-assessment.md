@@ -10,7 +10,7 @@ publish.
 | Assessment date | 8 October 2026 |
 | Commit the two reviews examined | `138cec050e0c176660c59dc98c3df90ac8e9a08d` (`main` on 12 September 2026) |
 | Current assessed baseline | `0556eeff9e783044b5b2f8057bb3a7a9172341be` (`main` on 8 October 2026) |
-| Later update | 9 October 2026: `CODEOWNERS` added under AC-35. Entries changed by it are dated. The findings and the baseline are otherwise as assessed on 8 October |
+| Later update | 9 October 2026: `CODEOWNERS` added under AC-35, and a fix for AC-36 proposed but not merged. Entries changed by these are dated. The findings and the baseline are otherwise as assessed on 8 October |
 | Maintainer responsible for follow-up | Susana ([@SusanaCodes](https://github.com/SusanaCodes)) |
 
 The baseline is the commit this assessment was written against. It is
@@ -57,7 +57,7 @@ None of these is fixed at the baseline.
 
 | Finding | Review 1 | Review 2 | State at the baseline | Ticket |
 |---|---|---|---|---|
-| Rejected case-input and model-output values are echoed in exception messages, which reach stderr and CI logs | Low | Medium | Open. The behaviour is now described in the project manual; that is a disclosure, not a fix | [AC-36](https://thesreflow.atlassian.net/browse/AC-36) |
+| Rejected case-input and model-output values are echoed in exception messages, which reach stderr and CI logs | Low | Medium | Open at the baseline, where the project manual described the behaviour; that was a disclosure, not a fix. Update, 9 October 2026: a fix is proposed in draft [pull request #10](https://github.com/SusanaCodes/agenttrail/pull/10). It removes rejected values and unexpected key names from case-input, model-response and audit-record validation errors, with regression tests. It is not merged, so the finding stays open | [AC-36](https://thesreflow.atlassian.net/browse/AC-36) |
 | The redaction gate scans raw line text, so a supported identifier written with JSON `\uXXXX` escapes is not detected. Reported from the source; not executed in either review | n/r | Medium | Open | [AC-37](https://thesreflow.atlassian.net/browse/AC-37) |
 | A non-UTF-8 audit trail raises an uncaught decoding error; record lookup then exits with the code documented as "no record found" | Low (probed) | Low | Open | [AC-38](https://thesreflow.atlassian.net/browse/AC-38) |
 | No `CODEOWNERS`; merge blocking depends on repository rules outside the repository | Medium | Informational | Open and unverified at the baseline. Update, 9 October 2026: a `CODEOWNERS` file is now on `main`; merge blocking is still unverified. See [Verification record](#verification-record) | [AC-35](https://thesreflow.atlassian.net/browse/AC-35) |

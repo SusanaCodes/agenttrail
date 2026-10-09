@@ -6,8 +6,9 @@ stderr and therefore CI logs. Errors may still name the known field, the
 category of failure, and the allowed set.
 
 Mirrors ``test_error_messages_never_echo_rejected_values`` in
-tests/test_audit.py for the decision and golden-dataset paths, and then
-drives the real ``ci_gate`` CLI error path end to end. Every marker
+tests/test_audit.py for the decision and golden-dataset paths, extends
+it to unexpected audit-record keys, and drives the real ``ci_gate`` and
+``record_view`` CLI error paths end to end. Every marker
 below is synthetic, and all test data lives in temporary directories:
 nothing here reads or writes the committed dataset or fixtures.
 """
@@ -22,6 +23,8 @@ from pathlib import Path
 from unittest import mock
 
 import agenttrail.ci_gate as gatemod
+from agenttrail.audit import AuditValidationError, validate_audit_record
+from agenttrail.audit_reader import AuditTrailReadError, read_audit_trail
 from agenttrail.decision import (
     INPUT_ENUMS,
     TOOL_NAME,
@@ -34,6 +37,7 @@ from agenttrail.golden import GoldenDatasetError, load_labelled_cases
 from support_fixtures import no_network, tool_response
 from test_ci_gate_regression import twelve_low_cases
 from test_eval_failures import build_synthetic
+from test_record_view import DECISION_ID_1, record_one, run_cli, write_trail
 
 # Distinctive synthetic markers. None is a real identifier; each is
 # unlikely to occur in any legitimate message, so its presence in an
@@ -43,6 +47,8 @@ CASE_KEY_MARKER = "zz_case_key_c03d58_marker"
 MODEL_VALUE_MARKER = "ZZMODELVALUE-9be216-MARKER"
 MODEL_KEY_MARKER = "zz_model_key_71aa0e_marker"
 MODEL_TOOL_MARKER = "zz_model_tool_5d44c7_marker"
+AUDIT_KEY_MARKER = "zz_audit_key_e8b302_marker"
+AUDIT_VALUE_MARKER = "ZZAUDITVALUE-26dd7c-MARKER"
 # Out-of-range confidence with a digit run no real message contains.
 MODEL_NUMBER_MARKER = 73190.4682
 MODEL_NUMBER_TEXT = "73190"
@@ -54,6 +60,8 @@ ALL_MARKERS = (
     MODEL_KEY_MARKER,
     MODEL_TOOL_MARKER,
     MODEL_NUMBER_TEXT,
+    AUDIT_KEY_MARKER,
+    AUDIT_VALUE_MARKER,
 )
 
 VALID_CASE = {
@@ -172,6 +180,59 @@ class TestModelResponseErrorHygiene(unittest.TestCase):
                     model_id=MODEL_ID,
                 )
             self.assertIn(expected, str(ctx.exception), label)
+
+
+class TestAuditValidationErrorHygiene(unittest.TestCase):
+    """An unexpected audit-record key, directly and through a real reader."""
+
+    def marked_record(self):
+        return record_one(**{AUDIT_KEY_MARKER: AUDIT_VALUE_MARKER})
+
+    def assert_clean(self, text, label):
+        for marker in ALL_MARKERS:
+            self.assertNotIn(marker, text, label)
+
+    def test_valid_record_passes(self):
+        # Guards the tests below: only the planted key makes them fail.
+        self.assertEqual(validate_audit_record(record_one()), record_one())
+
+    def test_unexpected_audit_key_is_not_echoed(self):
+        with self.assertRaises(AuditValidationError) as ctx:
+            validate_audit_record(self.marked_record())
+        message = str(ctx.exception)
+        self.assert_clean(message, "validator")
+        self.assertIn("unexpected", message)
+        # The known, allowed fields are still listed.
+        self.assertIn("case_ref", message)
+
+    def test_audit_reader_does_not_echo_unexpected_key(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            trail = write_trail(tmp, [self.marked_record()])
+            with self.assertRaises(AuditTrailReadError) as ctx:
+                read_audit_trail(trail)
+        message = str(ctx.exception)
+        self.assert_clean(message, "reader")
+        self.assertIn("invalid audit record", message)
+
+    def test_record_view_cli_does_not_expose_unexpected_key(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            trail = write_trail(tmp, [self.marked_record()])
+            code, out, err = run_cli(
+                ["--trail", str(trail), "--decision-id", DECISION_ID_1]
+            )
+        self.assertEqual(code, 2)
+        self.assertEqual(out, "")
+        self.assertIn("record view error", err)
+        self.assert_clean(out + err, "record_view CLI")
+
+    def test_record_view_cli_still_renders_a_valid_record(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            trail = write_trail(tmp, [record_one()])
+            code, out, err = run_cli(
+                ["--trail", str(trail), "--decision-id", DECISION_ID_1]
+            )
+        self.assertEqual((code, err), (0, ""))
+        self.assertIn(DECISION_ID_1, out)
 
 
 class TestGateErrorPathHygiene(unittest.TestCase):
