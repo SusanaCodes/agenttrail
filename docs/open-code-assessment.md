@@ -82,7 +82,7 @@ two series are different and a "Ticket N" must not be read as `AC-N`.
 | 1 | Named owner and maintenance plan | Verified in documents; `CODEOWNERS` pending on 7 October, on `main` since 9 October; required code-owner review deferred (AC-35 open) |
 | 2 | Security contact, intake route and triage process | Policy written; **intake route not active**, pending publication |
 | 3 | No secrets or sensitive operational detail, with enforced controls | Scans clean locally (7 October) and in one pull-request CI run (8 October); enforcement pending (required check, push protection) |
-| 4 | Secure-by-design baseline | Partial evidence; threat model pending (AC-57); open defects in claimed controls (AC-36, AC-37, AC-38) |
+| 4 | Secure-by-design baseline | Partial evidence; threat model pending (AC-57); open defects in claimed controls (AC-37, AC-38). The AC-36 defect was open on 7 October and was fixed on 9 October |
 | 5 | Automated hygiene | Dependabot alerts and security updates enabled; scanning workflow passed once on a pull request (8 October), not yet on `main` or on schedule; version updates configured, not active; trunk protections unverified and unenforced (AC-35) |
 | 6 | Patching expectations and ability to demonstrate them | Targets written; no track record yet |
 | 7 | Safe posture for unmaintained code | Process verified in documents; deployed-service part excluded |
@@ -477,6 +477,16 @@ review: there is one maintainer and no second reviewer. The trunk
 protection rows under [item 5](#5-automated-hygiene) are unchanged and
 still unverified and unenforced.
 
+Also on 9 October 2026, the AC-36 defect was fixed in
+[pull request #10](https://github.com/SusanaCodes/agenttrail/pull/10).
+Case-input, model-response, audit-record and fixture-entry validation
+errors no longer include rejected values or unexpected key names, and
+regression tests cover those validators and the gate and record-lookup
+error paths. The statement under
+[item 4](#4-secure-by-design-baseline) that the defect is not fixed
+describes the assessed commit and is kept as dated evidence. AC-37 and
+AC-38 are unchanged.
+
 ## Refreshed secret and history review
 
 The September 2026
@@ -599,7 +609,7 @@ the GitHub REST documentation on 7 October 2026.
 | Gap | Ticket |
 |---|---|
 | Required check, bypass off and the blocked throwaway pull request. `CODEOWNERS` was added on 9 October 2026; mandatory code-owner approval is deferred | AC-35 |
-| Rejected values in exception messages | AC-36 |
+| Rejected values in exception messages. Fixed on 9 October 2026 | AC-36 |
 | Redaction gate bypass | AC-37 |
 | Malformed audit encoding exit code | AC-38 |
 | Manual redaction sweep of `docs/`, `tests/`, `showcase/` | AC-39 |

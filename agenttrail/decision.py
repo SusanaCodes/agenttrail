@@ -121,14 +121,18 @@ def validate_case(case):
     missing = sorted(set(INPUT_ENUMS) - set(case))
     if missing:
         raise CaseValidationError(f"missing input fields: {missing}")
-    extra = sorted(set(case) - set(INPUT_ENUMS))
+    # Error messages below name known fields and allowed sets only. A
+    # rejected value or an unexpected key may be prose or an identifier,
+    # and these messages reach stderr and CI logs, so neither is echoed.
+    extra = set(case) - set(INPUT_ENUMS)
     if extra:
-        raise CaseValidationError(f"unexpected input fields: {extra}")
+        raise CaseValidationError(
+            f"{len(extra)} unexpected input field(s); allowed fields: "
+            f"{sorted(INPUT_ENUMS)}"
+        )
     for field, allowed in INPUT_ENUMS.items():
         if case[field] not in allowed:
-            raise CaseValidationError(
-                f"{field}={case[field]!r} is not one of {allowed}"
-            )
+            raise CaseValidationError(f"{field} is not one of {allowed}")
     return {field: case[field] for field in sorted(INPUT_ENUMS)}
 
 
@@ -169,9 +173,11 @@ def _extract_tool_input(response):
     if not isinstance(tool_use, dict):
         raise ModelResponseError("toolUse block is not an object")
 
+    # As in validate_case: model-supplied values and unexpected key
+    # names are never copied into the messages below.
     if tool_use.get("name") != TOOL_NAME:
         raise ModelResponseError(
-            f"model called unexpected tool {tool_use.get('name')!r}"
+            f"model called a tool other than {TOOL_NAME}"
         )
 
     tool_input = tool_use.get("input")
@@ -182,28 +188,31 @@ def _extract_tool_input(response):
     missing = sorted(required - set(tool_input))
     if missing:
         raise ModelResponseError(f"tool input missing fields: {missing}")
-    extra = sorted(set(tool_input) - required)
+    extra = set(tool_input) - required
     if extra:
-        raise ModelResponseError(f"tool input has unexpected fields: {extra}")
+        raise ModelResponseError(
+            f"tool input has {len(extra)} unexpected field(s); allowed "
+            f"fields: {sorted(required)}"
+        )
 
     decision = tool_input["decision"]
     if decision not in DECISIONS:
-        raise ModelResponseError(f"invalid decision {decision!r}")
+        raise ModelResponseError(f"decision is not one of {DECISIONS}")
 
     confidence = tool_input["confidence"]
     if isinstance(confidence, bool) or not isinstance(confidence, (int, float)):
-        raise ModelResponseError(f"confidence {confidence!r} is not numeric")
+        raise ModelResponseError("confidence is not numeric")
     if not 0.0 <= confidence <= 1.0:
-        raise ModelResponseError(
-            f"confidence {confidence!r} is outside [0.0, 1.0]"
-        )
+        raise ModelResponseError("confidence is outside [0.0, 1.0]")
 
     template = tool_input["rationale_template"]
     if template not in RATIONALE_TEMPLATES:
-        raise ModelResponseError(f"invalid rationale template {template!r}")
+        raise ModelResponseError(
+            f"rationale_template is not one of {sorted(RATIONALE_TEMPLATES)}"
+        )
     if template != TEMPLATE_FOR_DECISION[decision]:
         raise ModelResponseError(
-            f"template {template!r} contradicts decision {decision!r}"
+            "rationale_template contradicts the decision"
         )
 
     return decision, float(confidence), template

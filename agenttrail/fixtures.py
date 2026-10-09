@@ -123,16 +123,18 @@ def validate_fixture_entry(entry):
     missing = sorted(set(FIXTURE_FIELDS) - set(entry))
     if missing:
         raise FixtureValidationError(f"fixture entry missing fields: {missing}")
-    extra = sorted(set(entry) - set(FIXTURE_FIELDS))
+    # Supplied key names and the supplied version are file content and
+    # are not copied into these messages; they reach stderr and CI logs.
+    extra = set(entry) - set(FIXTURE_FIELDS)
     if extra:
         raise FixtureValidationError(
-            f"fixture entry has unexpected fields: {extra}"
+            f"fixture entry has {len(extra)} unexpected field(s); allowed "
+            f"fields: {sorted(FIXTURE_FIELDS)}"
         )
 
     if entry["fixture_format_version"] != FIXTURE_FORMAT_VERSION:
         raise FixtureValidationError(
-            "unsupported fixture_format_version "
-            f"{entry['fixture_format_version']!r}; "
+            "unsupported fixture_format_version; "
             f"this reader supports {FIXTURE_FORMAT_VERSION}"
         )
     _require_pattern(entry, "case_id", CASE_REF_PATTERN)

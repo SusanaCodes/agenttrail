@@ -154,12 +154,13 @@ def validate_audit_record(record):
     missing = sorted(set(AUDIT_FIELDS) - set(record))
     if missing:
         raise AuditValidationError(f"audit record missing fields: {missing}")
-    extra = sorted(
-        set(record) - set(AUDIT_FIELDS) - set(OPTIONAL_AUDIT_FIELDS)
-    )
+    extra = set(record) - set(AUDIT_FIELDS) - set(OPTIONAL_AUDIT_FIELDS)
     if extra:
+        # A count, not the names: an unexpected key is supplied content
+        # and may itself be prose or an identifier.
         raise AuditValidationError(
-            f"audit record has unexpected fields: {extra}"
+            f"audit record has {len(extra)} unexpected field(s); allowed "
+            f"fields: {sorted(AUDIT_FIELDS + OPTIONAL_AUDIT_FIELDS)}"
         )
 
     if "decision_id" in record:

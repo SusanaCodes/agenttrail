@@ -383,12 +383,16 @@ pattern-constrained structured fields only (see
 `0o600` permissions where the platform honours the mode. The GitHub
 Actions workflow uses `permissions: contents: read`, pins third-party
 actions to full commit SHAs, requests no secrets, and needs no AWS
-access. Audit-record value checks name the offending field without
-echoing the rejected value, and redaction-gate findings never contain
-the matched text. Other error paths are not sanitised in the same way:
-case-input validation prints the rejected value, model-response
-validation prints the rejected decision, confidence or template, and
-audit-record and case-input validation print unexpected field names.
+access. Case-input, model-response, audit-record and fixture-entry
+validation errors name the known field, the kind of failure and the
+allowed set or supported version. They do not echo a rejected value or
+an unexpected key name, and redaction-gate findings never contain the
+matched text. Tests cover those four validators and the gate and
+record-lookup error paths. What can still appear in an error message
+is bounded or operator-supplied: an identifier that has already passed
+its pattern check (a case reference or a request fingerprint), a file
+path and line number, operating-system error text, and a configuration
+value such as a confidence threshold.
 
 **Durability and concurrency limitations (honest).** The trail is
 append-only JSONL with a single `O_APPEND` write per record. It is
@@ -627,8 +631,9 @@ The control hierarchy, strongest first:
    `[REDACTED]` marker — the matched text is discarded inside the
    scanner. The gate's own error path (exit 2) prints the target path
    and an exception class name, not file content. This covers the
-   redaction gate's output only; other commands' error messages can
-   echo rejected values (see [section 4](#4-architecture)).
+   redaction gate's output only. Which other error messages avoid
+   echoing supplied content, and which still do not, is set out in
+   [section 4](#4-architecture).
 
 **Why general NER was rejected** (NER: named-entity recognition, the
 machine-learning technique for spotting names, places, and organisations

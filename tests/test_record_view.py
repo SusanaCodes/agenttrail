@@ -214,7 +214,10 @@ class TestLookup(RecordViewTestCase):
         with self.assertRaises(AuditTrailReadError) as ctx:
             lookup_decision_record(trail, DECISION_ID_1)
         message = str(ctx.exception)
-        self.assertIn("raw_user_input", message)
+        # The refusal is reported without echoing the supplied key name
+        # or its value (AC-36).
+        self.assertIn("unexpected field", message)
+        self.assertNotIn("raw_user_input", message)
         self.assertNotIn(PLANTED_NI, message)
 
     def test_invalid_decision_id_argument_is_rejected_without_echo(self):
