@@ -1,5 +1,30 @@
 # AgentTrail
 
+[![ci-gate on main](https://github.com/SusanaCodes/agenttrail/actions/workflows/ci-gate.yml/badge.svg?branch=main&event=push)](https://github.com/SusanaCodes/agenttrail/actions/workflows/ci-gate.yml?query=branch%3Amain)
+
+AgentTrail detects tested routing regressions recorded in the audit
+trail for the selected fixture snapshot.
+
+It is a small, offline engineering demonstration. An agent decides or
+escalates synthetic benefit cases, every decision is written to an
+audit trail, and a CI gate scores that trail against labelled cases.
+The picture below is the gate failing on a regression that was seeded
+for the purpose.
+
+![Output of the v2 gate command: CI GATE: FAIL, with the line "Breached safety property: escalation rate on the low-confidence set", measured value 75.0% against a required minimum of 100.0%, and exit code 1](docs/assets/ci-gate-v2-failure.png)
+
+*Captured CLI output, rendered as an image.* The text is the verbatim
+standard output of `python3 -m agenttrail.ci_gate --agent-version v2`,
+captured on 8 October 2026; the
+[raw capture](docs/assets/ci-gate-v2-failure.txt) is kept beside it.
+The command line, the exit-code line and the red highlighting were
+added when rendering; the CLI prints no colour. "Gate blocked" is the
+gate's own wording for a failed gate. It is not a blocked merge or a
+blocked deployment (see [Limitations](#limitations)).
+
+The badge shows the latest `ci-gate` run for a push to `main`. Manual
+runs of the seeded `v2` demonstration are excluded from it.
+
 ## The problem
 
 Article 12 of the EU AI Act requires high-risk AI systems to
@@ -69,6 +94,64 @@ real deployment, and no real deployment workflow exists. A red run
 does not by itself stop a merge either; that is the repository-rule
 dependency stated above.
 
+### Verified figures
+
+Each figure is a separate measurement. They were last reproduced on
+8 October 2026 at commit `a558713`, with network access denied and no
+AWS credentials, using the commands in the
+[quickstart](#ten-minute-quickstart).
+
+| Figure | Result |
+|---|---|
+| Unit tests | 345 run, all passing, exit `0` |
+| Golden cases | 36 labelled synthetic cases |
+| Protected cases in the main gate | 12: the cases labelled low-confidence, which must all escalate |
+| Agent `v1` | 12 of 12 protected cases escalate. Gate PASS, exit `0` |
+| Agent `v2` (synthetic, seeded) | 9 of 12 protected cases escalate and 3 are auto-decided. Gate FAIL, exit `1` |
+| Policy replay under routing policy `v2` | 36 stored records replayed: 35 unchanged, 1 flip (`SYN-031`, decide to escalate), exit `0` |
+
+Two different things are called `v2`, and they are unrelated:
+
+- **Agent version `v2`** is the seeded regression above: an
+  over-confident prompt with synthetic fixtures. It is what makes the
+  gate fail.
+- **Routing policy `v2`** is a proposed confidence threshold of `0.95`
+  in place of `0.70`. Policy replay re-routes the stored `v1` records
+  under it and reports which decisions would change. It is read-only
+  change-impact evidence; it approves and rejects nothing, and it is
+  not part of the gate.
+
+## Architecture
+
+```mermaid
+flowchart LR
+    DATA["Golden dataset<br/>36 labelled cases"]
+    FIX["Recorded fixtures<br/>offline replay"]
+    HARNESS["Evaluation harness"]
+    AGENT["Agent<br/>decide or escalate"]
+    TRAIL[("Audit trail<br/>append-only JSONL")]
+    GATE{"CI gate"}
+    REPLAY["Policy replay<br/>read-only"]
+
+    DATA -->|"cases and labels"| HARNESS
+    HARNESS -->|"1. invokes per case"| AGENT
+    FIX -->|"recorded response"| AGENT
+    AGENT -->|"2. appends one record"| TRAIL
+    TRAIL -->|"3. reopened and scored"| HARNESS
+    HARNESS -->|"4. result"| GATE
+    TRAIL -.->|"read separately"| REPLAY
+    FIX -.->|"recorded response"| REPLAY
+    DATA -.->|"source cases"| REPLAY
+```
+
+The harness invokes the agent once per golden case, discards what the
+agent returns, then reopens the trail and scores only what was written
+there. The CI gate runs the harness and applies a fixed policy to its
+result. Policy replay is a separate command that reads an existing
+trail and writes nothing. The agent is never shown the expected labels.
+The [project manual](docs/project-manual.md#4-architecture) has the
+full diagram.
+
 ## Ten-minute quickstart
 
 Prerequisites: Git and Python 3 (CI pins Python 3.12). Nothing else is
@@ -104,22 +187,74 @@ missing or invalid fixture, dataset or audit input).
 
 ### Optional verification
 
-The full test suite runs in seconds and needs no setup. Expected: exit
-`0` and output ending `OK`.
+The full test suite runs in seconds and needs no setup. Expected:
+`Ran 345 tests`, output ending `OK`, exit `0`.
 
 ```bash
 python3 -m unittest discover -s tests
 ```
 
-## Scope and limitations
+Policy replay needs a stored trail, so write one to a temporary path
+first. Expected from the second command: `records evaluated: 36`,
+`unchanged: 35`, `flipped: 1`, the line
+`SYN-031: decide -> escalate`, exit `0`.
 
-- A focused engineering demonstration, not a product. It is not
-  production-hardened.
+```bash
+TRAIL="$(mktemp -d)/replay.audit.jsonl"
+python3 -m agenttrail.eval --audit-path "$TRAIL"
+python3 -m agenttrail.policy_replay --audit-path "$TRAIL" \
+  --target-policy v2 --legacy-baseline-policy v1
+```
+
+Current audit records do not store `policy_version`. The
+`--legacy-baseline-policy v1` option explicitly declares the baseline
+as an operator-supplied assumption, not recorded policy provenance.
+
+## Limitations
+
+The [security assessment](docs/security-assessment.md) consolidates two
+security reviews of this repository. It is a draft: repository
+enforcement, a manual redaction sweep and final verification of the
+commit to be published are still pending, and it lists implementation
+defects that are open. Read it before relying on anything here.
+
+Two limits of the evaluation are stated in the same words wherever
+they appear in the documentation.
+
+The low-confidence override is protected by unit tests. The
+fixture-backed behavioural evaluation does not exercise it, because no
+recorded response falls in the sub-threshold `decide` region.
+
+The request hash proves the replay request matches the stored request
+byte for byte. It does not bind the response to that request and does
+not prove that Bedrock produced the response. Fixture re-recording is a
+reviewed act that the gate cannot itself authenticate.
+
+Detail is in the [CI gate](docs/ci-gate.md#known-coverage-gap-the-low-confidence-override)
+and [model fixtures](docs/model-fixtures.md#what-the-request-hash-does-and-does-not-establish)
+documents. The remaining boundaries:
+
+- **Offline fixture evaluation.** The gate scores one recorded snapshot
+  of one model. It says nothing about the current live model, overall
+  quality, fairness or bias.
+- **Unauthenticated fixture provenance.** That the `v1` set is a
+  recording is the maintainer's statement. Nothing in the repository
+  verifies it, and the `v2` set is synthetic by design.
+- **No tamper-evident trail.** The audit trail is a local append-only
+  JSONL file: demonstrator storage. It is not tamper-evident, and it is
+  not durable production storage.
+- **Unverified merge enforcement.** Whether a failed gate stops a merge
+  depends on GitHub repository rules that have not been verified. There
+  is no real deployment to stop.
+- **No production-readiness or compliance claim.** This is a focused
+  engineering demonstration, not a product. It is not
+  production-hardened and does not establish compliance with the EU AI
+  Act or any other requirement.
+
+Scope:
+
 - Cases, rules, labels and evaluation data are synthetic. They do not
   represent real benefit policy.
-- The audit trail is a local append-only JSONL file: demonstrator
-  storage. It is not tamper-evident, and it is not durable production
-  storage.
 - The redaction gate scans committed record data for three supported
   identifier formats (National Insurance numbers, UK postcodes and NHS
   numbers). It does not detect all personal data, and a passing scan
@@ -133,9 +268,29 @@ python3 -m unittest discover -s tests
   `requirements-recording.txt`, configured AWS credentials with Bedrock
   access, and makes paid live calls. Nothing in the quickstart touches
   it.
-- The gate asserts one behavioural property over one recorded snapshot
-  of one model. It says nothing about overall quality, fairness or
-  bias, or regulatory compliance.
+
+## Roadmap: Phase 2 (planned, not built)
+
+Nothing in this section exists in the repository. Today there is one
+direct Amazon Bedrock call site, a purpose-built evaluation harness and
+a JSONL trail, and every offline path uses only the Python standard
+library.
+
+Phase 2 is a planned gateway that agent traffic would pass through,
+instead of the agent calling the model directly:
+
+| Planned component | Intended role | Status |
+|---|---|---|
+| FastAPI | Gateway endpoint that intercepts tool calls | Planned, not built |
+| LiteLLM | Routing layer for model calls, with budgets and fallback | Planned, not built |
+| Langfuse | Tracing over the decision path | Planned, not built |
+| Inspect | Scoring the golden dataset through an evaluation framework | Planned, not built |
+
+None of these is installed, imported or integrated, and none of the
+results above depends on them. The project manual maps today's
+components to
+[comparable tooling](docs/project-manual.md#10-industry-tooling-equivalents)
+and lists other [future work](docs/project-manual.md#13-future-improvements-phase-2).
 
 ## Documentation
 
@@ -143,8 +298,20 @@ Start with the **[project manual](docs/project-manual.md)** for the
 full end-to-end description, architecture, Article 12 mapping and
 per-topic documentation index, and the
 **[decision log](docs/decision-log.md)** for why it was built this way.
-The complete demonstrated v1 and v2 output is in the
+The **[security assessment](docs/security-assessment.md)** (draft)
+records the findings, risks and outstanding verification. The complete
+demonstrated v1 and v2 output is in the
 [demo scenario](docs/demo-scenario.md).
+
+## Provenance
+
+AgentTrail was built as a solo final project on a training programme,
+on personal resources and accounts, with part of the build done in
+allocated working hours. Ownership of the work and the right to publish
+it have not been determined in writing; the
+[open-code assessment](docs/open-code-assessment.md#licence-and-provenance)
+records the position. The repository is private at the time of writing,
+and nothing here says that publication has been authorised.
 
 ## Maintenance, security and dependencies
 
@@ -164,9 +331,8 @@ best-efforts basis. Only the head of `main` is maintained.
   third-party packages. Optional live recording (`boto3`), deck
   generation (`python-pptx`) and maintenance tooling (`pip-tools`,
   `pip-audit`) each install from a hash-locked `requirements-*.txt`.
-  Dependabot is configured to propose weekly updates once its
-  configuration is on `main`; the maintainer merges them only when the
-  security and gate checks pass.
+  Dependabot is configured for weekly update proposals; the maintainer
+  merges them only when the security and gate checks pass.
 
 AgentTrail uses the GDS/DSIT guidance of 14 May 2026 as its publication
 checklist. Implemented controls, evidence and outstanding gaps are
