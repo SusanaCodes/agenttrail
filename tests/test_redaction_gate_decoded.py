@@ -22,7 +22,7 @@ from agenttrail.redaction_gate import scan_file, scan_line
 
 NI = "AB 12 34 56 C"
 NI_COMPACT = "AB123456C"
-NHS = "943 476 5919"
+NHS = "999 999 0002"
 POSTCODE = "SW1A 1AA"
 
 # Decodes to ordinary text; present only to prove decoded content is

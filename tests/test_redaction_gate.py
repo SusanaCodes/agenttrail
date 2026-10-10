@@ -1,9 +1,10 @@
 """Scanner-level tests for the Ticket 8 redaction gate.
 
 All identifiers used here are synthetic test inputs (the ticket's
-planted NI value, the NHS example-format number, and well-known public
-postcodes). No real person's data appears. CLI contract and exit-code
-coverage lives in tests/test_redaction_gate_cli.py.
+planted NI value, a checksum-valid NHS-shaped number in the 999 range
+reserved for testing, and well-known public postcodes). No real
+person's data appears. CLI contract and exit-code coverage lives in
+tests/test_redaction_gate_cli.py.
 """
 
 import dataclasses
@@ -22,7 +23,7 @@ from agenttrail.redaction_gate import (
 )
 
 NI = "AB 12 34 56 C"
-NHS = "943 476 5919"
+NHS = "999 999 0002"
 POSTCODE = "SW1A 1AA"
 
 # Shaped like a real audit record; content is irrelevant to the scanner,
@@ -99,7 +100,7 @@ class TestScanLine(unittest.TestCase):
                 self.assertEqual(scan_line(value), ())
 
     def test_nhs_number_grouped_and_ungrouped_detected(self):
-        for value in ("9434765919", "943 476 5919", "943-476-5919"):
+        for value in ("9999990002", "999 999 0002", "999-999-0002"):
             with self.subTest(value=value):
                 self.assertIn("nhs_number", scan_line(value))
 
@@ -110,10 +111,10 @@ class TestScanLine(unittest.TestCase):
 
     def test_wrong_length_or_embedded_digit_runs_not_nhs(self):
         for value in (
-            "943476591",             # nine digits
-            "94347659190",           # eleven digits
-            "a9434765919b",          # inside an alphanumeric token
-            "sha_9434765919_suffix",  # underscore-delimited token
+            "999999000",             # nine digits
+            "99999900020",           # eleven digits
+            "a9999990002b",          # inside an alphanumeric token
+            "sha_9999990002_suffix",  # underscore-delimited token
         ):
             with self.subTest(value=value):
                 self.assertEqual(scan_line(value), ())
@@ -217,7 +218,7 @@ class TestFindingsNeverCarryTheValue(unittest.TestCase):
             f"finding: {path}:1: national_insurance_number: [REDACTED]",
             report,
         )
-        for secret in (NI, NHS, POSTCODE, "AB123456C", "9434765919"):
+        for secret in (NI, NHS, POSTCODE, "AB123456C", "9999990002"):
             self.assertNotIn(secret, report)
 
     def test_pass_report_shape(self):

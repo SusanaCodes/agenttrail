@@ -26,7 +26,7 @@ from agenttrail.versions import AGENT_VERSIONS
 
 NI = "AB 12 34 56 C"
 NI_COMPACT = "AB123456C"
-NHS = "943 476 5919"
+NHS = "999 999 0002"
 POSTCODE = "SW1A 1AA"
 
 # Decodes to ordinary text; present only to prove decoded content is
@@ -272,7 +272,7 @@ class TestEmbeddedStringsAreNotJoined(unittest.TestCase):
     def test_identifier_split_across_layers_is_not_assembled(self):
         line = json.dumps({"a": "AB12", "b": '{"c": "3456C"}'})
         self.assertEqual(scan_line(line), ())
-        line = json.dumps({"a": "943 476", "b": json.dumps(["5919"])})
+        line = json.dumps({"a": "999 999", "b": json.dumps(["0002"])})
         self.assertEqual(scan_line(line), ())
 
 

@@ -70,7 +70,7 @@ inside it, for as many layers as the data has:
 |---|---|
 | `national_insurance_number` | Two prefix letters, six digits, suffix letter A–D. Any casing. Optional single space or hyphen between the conventional groups: `AB123456C`, `AB 12 34 56 C`, `AB-12-34-56-C`, `AB 123456 C`. Prefixes that are never issued are excluded: first letter D/F/I/Q/U/V, second letter D/F/I/Q/U/V/O, pairs BG, GB, KN, NK, NT, TN, ZZ. |
 | `uk_postcode` | Outward shapes A9, A99, A9A, AA9, AA99, AA9A plus the 9AA inward part, with or without the single conventional space, any casing (`SW1A 1AA`, `m1 1ae`, `b338th`). Shape matching only — not postal-address validation. |
-| `nhs_number` | Exactly ten digits, contiguous or grouped 3-3-4 with single space or hyphen separators (`9434765919`, `943 476 5919`, `943-476-5919`). |
+| `nhs_number` | Exactly ten digits, contiguous or grouped 3-3-4 with single space or hyphen separators (`9999990002`, `999 999 0002`, `999-999-0002`; the example is checksum-valid and lies in the 999 range reserved for test data). |
 
 **NHS checksum decision:** the scanner deliberately does **not** apply
 the modulus-11 checksum. A mistyped or corrupted NHS number is still
