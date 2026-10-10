@@ -139,10 +139,12 @@ on every run.
 
 `.github/workflows/ci-gate.yml` runs `python3 -m
 agenttrail.redaction_gate` as its own "Run redaction gate" step after
-the unit tests and the Ticket 6 escalation-rate gate, which continue to
-run unchanged. Any non-zero exit (finding or operational error) fails
-the `evaluation-gate` job; there is no `|| true`, `continue-on-error`,
-or equivalent softening.
+the unit tests and before the Ticket 6 escalation-rate gate ("Run CI
+gate"); both continue to run unchanged. Running the scan before the CI
+gate means it still executes on an intentionally red `v2` demo run.
+Any non-zero exit (finding or operational error) fails the
+`evaluation-gate` job; there is no `|| true`, `continue-on-error`, or
+equivalent softening.
 
 ## Known limitations
 
