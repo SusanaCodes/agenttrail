@@ -33,26 +33,36 @@ def iter_audit_records(audit_path):
     audit_path = Path(audit_path)
     if not audit_path.is_file():
         raise AuditTrailReadError(f"audit trail was not created: {audit_path}")
-    with open(audit_path, encoding="utf-8") as f:
-        for line_no, line in enumerate(f, start=1):
-            where = f"{audit_path}:{line_no}"
-            if not line.strip():
-                raise AuditTrailReadError(
-                    f"{where}: blank line in audit trail"
-                )
-            try:
-                record = json.loads(line)
-            except json.JSONDecodeError as exc:
-                raise AuditTrailReadError(
-                    f"{where}: malformed audit record: {exc}"
-                ) from exc
-            try:
-                validate_audit_record(record)
-            except AuditValidationError as exc:
-                raise AuditTrailReadError(
-                    f"{where}: invalid audit record: {exc}"
-                ) from exc
-            yield record
+    # The decode error is caught around the whole iteration, not per
+    # line: a bad byte sequence surfaces when the text layer reads the
+    # file, before any line is yielded. The error names the trail only.
+    # The exception's own message would quote the offending bytes, so it
+    # is not interpolated and is not chained (AC-38).
+    try:
+        with open(audit_path, encoding="utf-8") as f:
+            for line_no, line in enumerate(f, start=1):
+                where = f"{audit_path}:{line_no}"
+                if not line.strip():
+                    raise AuditTrailReadError(
+                        f"{where}: blank line in audit trail"
+                    )
+                try:
+                    record = json.loads(line)
+                except json.JSONDecodeError as exc:
+                    raise AuditTrailReadError(
+                        f"{where}: malformed audit record: {exc}"
+                    ) from exc
+                try:
+                    validate_audit_record(record)
+                except AuditValidationError as exc:
+                    raise AuditTrailReadError(
+                        f"{where}: invalid audit record: {exc}"
+                    ) from exc
+                yield record
+    except UnicodeDecodeError:
+        raise AuditTrailReadError(
+            f"{audit_path}: audit trail is not valid UTF-8 text"
+        ) from None
 
 
 def read_audit_trail(audit_path):
