@@ -302,7 +302,7 @@ not entries in this record.
 | Copyright line | "Copyright (c) 2026 The AgentTrail authors". Unchanged |
 | README | Links the licence and this assessment |
 | Third-party notices | No third-party source code is vendored; optional tools are installed from their own distributions. Whether the committed showcase deck, which is built on the python-pptx default template, needs a notice has not been assessed |
-| **Provenance and publishing rights** | **Unresolved** |
+| **Provenance and publishing rights** | **No written determination. Maintainer decision to publish recorded on 10 October 2026, below** |
 
 The September review recorded that it had no evidence about any
 employer, programme or Crown ownership arrangement and left the neutral
@@ -321,9 +321,19 @@ None of that is an ownership determination, and none is made here.
 Neutral wording in the copyright line and the authorship recorded in
 Git are not evidence of the right to publish under MIT. The licence is
 retained unchanged because no authoritative evidence requires a
-change. **Owner:** Susana. **Remaining step:** obtain a written
-position from whoever can give one, or record an explicit decision to
-publish without it, before the repository is made public.
+change. **Owner:** Susana.
+
+**Decision, 10 October 2026.** The maintainer decided to publish
+without a written position, on her understanding that the programme
+context permits it and that other participants are publishing. No
+written determination of ownership or publishing rights from the
+programme, the employer or any other party was supplied, and none is
+claimed. The decision is recorded on AC-34, AC-47, AC-51 and AC-53. It
+is a maintainer decision, not an approval, endorsement or ownership
+determination, and it changes neither the licence text nor the
+copyright line. The remaining step recorded above, a written position
+or an explicit decision to publish without one, is met by this
+decision.
 
 ## Dependency audit evidence for AC-47
 
@@ -528,6 +538,18 @@ unresolved; enforcement (AC-35) remains unverified; private reporting
 still owed on the exact commit to be published, since the change set
 that adds this section is itself a new commit.
 
+## Update: 10 October 2026, publication decision
+
+Later on 10 October 2026, after the section above was written:
+
+| Item | Result |
+|---|---|
+| Publication decision | The maintainer decided to publish without a written ownership or publishing-rights determination; see [Licence and provenance](#licence-and-provenance). It is a maintainer decision, not an approval or an ownership determination |
+| AC-41 documentation contradictions | Done. The redaction manual's CI-order passage corrected in [pull request #13](https://github.com/SusanaCodes/agenttrail/pull/13), merged as `3fa9d8f`; the AC-16 Confluence build page corrected outside the repository |
+| AC-39 manual sweep | Done. Expanded sweep of `docs/`, `tests/` and `showcase/` merged in [pull request #14](https://github.com/SusanaCodes/agenttrail/pull/14) as `1497f0c97487b827b137c15148e2b33a464f9683`, with the NHS-shaped example moved to the 999 test range. Accepted on the basis of no unresolved sensitive findings with every retained detector vector reviewed; the scanner's exit `1` on `docs/` and `tests/` is recorded as exit `1`. Figures are in the [security assessment](security-assessment.md#verification-record) |
+| AC-48 exact-commit verification | Recorded on AC-48 for `53463f8` on 10 October 2026 (442 tests; redaction PASS; `v1` PASS 12/12; `v2` FAIL exit `1`, 9/12; 54-commit history scan and tree scan, no leaks; retained Actions logs reviewed). Repeated on each later candidate, including the commit that adds this section; the result for the final commit is on the ticket |
+| Steps P1 to P5, enforcement (AC-35) | Unchanged: not done, not verified. They follow the visibility change in the sequence recorded on AC-53 |
+
 ## Refreshed secret and history review
 
 The September 2026
@@ -653,9 +675,9 @@ the GitHub REST documentation on 7 October 2026.
 | Rejected values in exception messages. Fixed on 9 October 2026 | AC-36 |
 | Redaction gate bypass. Fixed on 9 October 2026 in pull request #11, merged as `fa28536` | AC-37 |
 | Malformed audit encoding exit code. Fixed on 10 October 2026, see the [10 October update](#evidence-update-10-october-2026) | AC-38 |
-| Manual redaction sweep of `docs/`, `tests/`, `showcase/`. Run on 10 October 2026; findings are intentional detector examples | AC-39 |
+| Manual redaction sweep of `docs/`, `tests/`, `showcase/`. Done on 10 October 2026: expanded sweep merged in pull request #14, accepted with every retained detector vector reviewed and the scanner's exit codes recorded as found | AC-39 |
 | Consolidated security assessment, which takes the dependency evidence above | AC-47 |
 | Final full-history scan and visibility change | AC-53 |
 | Static analysis, SBOM and enforced scanning proven by seeded violations | AC-54 |
 | Threat model | AC-57 |
-| Provenance and publishing rights | Unresolved; no ticket currently determines it |
+| Provenance and publishing rights | No written determination. Maintainer decision to publish recorded on 10 October 2026 on AC-34, AC-47, AC-51 and AC-53; see [Licence and provenance](#licence-and-provenance) |

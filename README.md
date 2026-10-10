@@ -312,12 +312,13 @@ demonstrated v1 and v2 output is in the
 AgentTrail was built as a solo final project on a training programme,
 on personal resources and accounts, with part of the build done in
 allocated working hours. Ownership of the work and the right to publish
-it have not been determined in writing; the
+it have not been determined in writing. On 10 October 2026 the
+maintainer decided to publish without such a determination, on her
+understanding that the programme context permits it. That is a
+maintainer decision, not a written approval from the programme or the
+employer, and not an ownership determination; the
 [open-code assessment](docs/open-code-assessment.md#licence-and-provenance)
-records the position. Nothing in this repository says that publication
-has been authorised; if you are reading this on a public page, the
-decision that made it public is recorded in the open-code assessment,
-not here.
+records the position and the decision.
 
 ## Maintenance, security and dependencies
 
