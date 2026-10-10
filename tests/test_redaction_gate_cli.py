@@ -94,7 +94,7 @@ class TestAcceptance(unittest.TestCase):
     def test_postcode_and_nhs_number_each_exit_one(self):
         for extra, category in (
             ({"note": "M1 1AE"}, "uk_postcode"),
-            ({"note": "943 476 5919"}, "nhs_number"),
+            ({"note": "999 999 0002"}, "nhs_number"),
             ({"note": "ab 12 34 56 c"}, "national_insurance_number"),
         ):
             with self.subTest(category=category), \
@@ -108,7 +108,7 @@ class TestAcceptance(unittest.TestCase):
 
     def test_multiple_findings_reported_in_deterministic_order(self):
         with TemporaryDirectory() as tmp:
-            b = write_trail(tmp, extra={"n": "9434765919"}, name="b.jsonl")
+            b = write_trail(tmp, extra={"n": "9999990002"}, name="b.jsonl")
             a = write_trail(
                 tmp, extra={"n": f"SW1A 1AA {NI}"}, name="a.jsonl"
             )
