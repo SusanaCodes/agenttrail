@@ -125,10 +125,12 @@ the ticket. Inventing a threshold would be inventing policy.
 
 An **evaluation error** is a third, distinct outcome: the dataset,
 fixtures, or audit trail could not produce a trustworthy verdict at all
-(missing fixture, missing/duplicate/malformed record, empty
-low-confidence subset). These raise rather than returning a result, and
-exit `2` from the CLI. The exception types are collected in
-`agenttrail.eval.EVALUATION_ERRORS`.
+(missing fixture, missing/duplicate/malformed record, a file that is
+not valid UTF-8, empty low-confidence subset). These raise rather than
+returning a result, and exit `2` from the CLI. The exception types are
+collected in `agenttrail.eval.EVALUATION_ERRORS`. Each loader
+translates a decoding failure into its own typed error and names the
+file only, so the offending bytes never reach stderr (AC-38).
 
 ## Callable API
 

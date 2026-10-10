@@ -71,11 +71,13 @@ operator errors) and exit non-zero.
 |---|---|
 | 0 | record found and rendered |
 | 1 | no stored record carries the given decision ID |
-| 2 | the trail cannot serve as evidence (missing/unreadable file, malformed JSONL, blank line, invalid record, duplicate decision IDs) or the decision-ID argument is not a valid identifier |
+| 2 | the trail cannot serve as evidence (missing/unreadable file, a file that is not valid UTF-8, malformed JSONL, blank line, invalid record, duplicate decision IDs) or the decision-ID argument is not a valid identifier |
 
 Failure is always explicit: duplicate IDs are reported rather than one
 record being silently chosen, and corrupt JSONL is reported as
-corruption, never as "record not found".
+corruption, never as "record not found". A trail that cannot be decoded
+as UTF-8 is reported by path only, as `audit trail is not valid UTF-8
+text`; the offending bytes are never echoed (AC-38).
 
 ## Allow-listed rendering boundary
 

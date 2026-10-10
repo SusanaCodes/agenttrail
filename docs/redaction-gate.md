@@ -169,6 +169,14 @@ or equivalent softening.
   postcode shapes. The structured record vocabulary (case refs, enums,
   timestamps, model IDs) is covered by negative tests to keep the
   committed data clean.
+* **Source and documentation files are raw-text scans.** When the gate
+  is pointed at `.py` or `.md` files, almost no line is a whole JSON
+  document, so only the raw-text detectors apply and the detector
+  examples in this document and in the redaction tests are themselves
+  reported. The result of that sweep is recorded in the
+  [security assessment](security-assessment.md#verification-record).
+* **An empty target passes.** A zero-byte file is a completed scan with
+  no findings, exit 0. Confirm the target is the file you meant.
 * The gate scans files it is pointed at. Data outside the configured
   targets — logs, databases, un-committed trails — is only covered if
   a caller passes those paths.
