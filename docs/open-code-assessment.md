@@ -15,7 +15,9 @@ was re-gathered for them. Those changes were then committed as
 that commit on 8 October 2026. That later evidence is kept apart in
 [Evidence update: 8 October 2026](#evidence-update-8-october-2026).
 A later change under AC-35 is recorded in
-[Evidence update: 9 October 2026](#evidence-update-9-october-2026).
+[Evidence update: 9 October 2026](#evidence-update-9-october-2026),
+and the state after the pre-publication review in
+[Evidence update: 10 October 2026](#evidence-update-10-october-2026).
 Everything else in this document is the 7 October local evidence
 unless it says otherwise.
 
@@ -81,9 +83,9 @@ two series are different and a "Ticket N" must not be read as `AC-N`.
 |---|---|---|
 | 1 | Named owner and maintenance plan | Verified in documents; `CODEOWNERS` pending on 7 October, on `main` since 9 October; required code-owner review deferred (AC-35 open) |
 | 2 | Security contact, intake route and triage process | Policy written; **intake route not active**, pending publication |
-| 3 | No secrets or sensitive operational detail, with enforced controls | Scans clean locally (7 October) and in one pull-request CI run (8 October); enforcement pending (required check, push protection) |
-| 4 | Secure-by-design baseline | Partial evidence; threat model pending (AC-57); an open defect in a claimed control (AC-38). The AC-36 and AC-37 defects were open on 7 October. AC-36 was fixed on 9 October; a fix for AC-37 was proposed on 9 October in pull request #11, which is a draft and is not merged |
-| 5 | Automated hygiene | Dependabot alerts and security updates enabled; scanning workflow passed once on a pull request (8 October), not yet on `main` or on schedule; version updates configured, not active; trunk protections unverified and unenforced (AC-35) |
+| 3 | No secrets or sensitive operational detail, with enforced controls | Scans clean locally (7 and 10 October), in CI on every push to `main` since 8 October, and on schedule (9 and 10 October); retained Actions logs reviewed on 10 October; enforcement pending (required check, push protection) |
+| 4 | Secure-by-design baseline | Partial evidence; threat model pending (AC-57). The AC-36, AC-37 and AC-38 defects were open on 7 October. AC-36 was fixed on 9 October (pull request #10), AC-37 on 9 October (pull request #11, merged), and AC-38 on 10 October (see the [10 October update](#evidence-update-10-october-2026)) |
+| 5 | Automated hygiene | Dependabot alerts and security updates enabled, 0 open alerts on 10 October; Dependabot version updates active (two update pull requests merged on 8 October); scanning workflow running on pushes to `main` and on schedule; trunk protections unverified and unenforced (AC-35) |
 | 6 | Patching expectations and ability to demonstrate them | Targets written; no track record yet |
 | 7 | Safe posture for unmaintained code | Process verified in documents; deployed-service part excluded |
 
@@ -500,6 +502,32 @@ redaction gate under
 describes the assessed commit and is kept as dated evidence. The manual
 sweep under AC-39 has not been run. AC-38 is unchanged.
 
+## Evidence update: 10 October 2026
+
+This section records the state found by the pre-publication review of
+`main` at `fa285361b0f315025d43989e009fc483f4c5d6d9` on 10 October
+2026, and the change set that adds this section. The review itself is
+recorded in the
+[security assessment](security-assessment.md#pre-publication-review-10-october-2026).
+Nothing else in this document was re-gathered.
+
+| Item | Result |
+|---|---|
+| AC-37 redaction-gate fix | Merged: [pull request #11](https://github.com/SusanaCodes/agenttrail/pull/11) is `main` at `fa28536`. The 9 October wording above, which described it as a draft, was true when written and is kept as dated evidence |
+| AC-38 malformed-encoding fix | Fixed in the change set that adds this section: a non-UTF-8 trail, fixture file or dataset is a typed malformed-input error, exit `2`, with the bytes never echoed. Regression tests cover each loader and the four CLIs |
+| AC-39 manual sweep | Run against `fa28536`. Every finding is an intentional detector example in `docs/redaction-gate.md`, the redaction tests, one planted value in `tests/test_record_view.py`, and the scanner's own docstring; `showcase/` is clean. Figures and scope are in the [security assessment](security-assessment.md#verification-record). No scanner exclusion was added |
+| Step M1: continuing operation on `main` | Observed in part. The `security-hygiene` workflow has run on every push to `main` since 8 October and twice on schedule ([37936762832](https://github.com/SusanaCodes/agenttrail/actions/runs/37936762832) on 9 October, [38052891123](https://github.com/SusanaCodes/agenttrail/actions/runs/38052891123) on 10 October against `fa28536`), all passing. Dependabot read the configuration on 8 October and opened two GitHub Actions update pull requests, [#2](https://github.com/SusanaCodes/agenttrail/pull/2) and [#3](https://github.com/SusanaCodes/agenttrail/pull/3), both merged the same day after the checks passed. The alerts API listed 0 open alerts on 10 October with the lock files on `main` |
+| Secret scan, all refs | Gitleaks 8.30.1 on 10 October: 51 commits across every local and remote-tracking ref, no leaks; working tree, no leaks. A further scan including the reflog reported one finding, on commit `8611f3e`, which was force-pushed out of pull request #10 on 9 October and is unreachable from any branch but still retrievable from GitHub by hash. It is the synthetic test marker that failed [run 37983821442](https://github.com/SusanaCodes/agenttrail/actions/runs/37983821442), not a credential; nothing was rotated because there was nothing to rotate. This is the one scanner finding in the repository's history and it is a false positive on a test constant whose name contained `KEY` |
+| Retained GitHub Actions logs | All 69 retained runs inventoried; 270 log files (4.5 MB) downloaded and scanned for credentials, tokens, keys, account identifiers, email addresses, personal names, local user paths and identifier shapes. No artefacts or caches exist. Nothing sensitive was found: the only matches were runner and Dependabot job identifiers, a `pkg:pypi/...@version` package URL, and GitHub's own `***` masking of the workflow token. These logs become readable by anyone once the repository is public; this review covers the logs retained on 10 October |
+| Repository settings, read 10 October | Visibility private. Branch summary for `main`: `protected: false`, `enforcement_level: off`. Rulesets and branch protection: HTTP 403, as on 7 October. Private vulnerability reporting: HTTP 404. Actions policy unchanged: two allowed actions, SHA pinning required, default workflow token read-only. 0 repository secrets, variables, environments, webhooks and deploy keys. One collaborator, the owner, with admin. 0 tags and 0 releases |
+| Pull request and issue text | 0 issues; the titles, bodies and comments of all 11 pull requests were scanned with the same patterns. No credential, email address, personal name or local path |
+
+What this update does not change: publishing rights (below) remain
+unresolved; enforcement (AC-35) remains unverified; private reporting
+(steps P1 and P2) remains inactive; and final verification (AC-48) is
+still owed on the exact commit to be published, since the change set
+that adds this section is itself a new commit.
+
 ## Refreshed secret and history review
 
 The September 2026
@@ -599,7 +627,7 @@ security blockers owned by other tickets.
 | Step | Action | Verifies |
 |---|---|---|
 | B1 | Commit and push the branch, open a pull request, observe `security-hygiene` and `ci-gate`. **Done on 8 October 2026**, see [evidence update](#evidence-update-8-october-2026) | Hash-locked installs and audits on CI's x86_64 Python 3.12; Gitleaks in CI |
-| M1 | After merge to `main`: confirm Dependabot has read the configuration, list Dependabot alerts for the three locks, and confirm a scheduled `security-hygiene` run has happened | Dependency update tooling, alerts and continuing scans are active |
+| M1 | After merge to `main`: confirm Dependabot has read the configuration, list Dependabot alerts for the three locks, and confirm a scheduled `security-hygiene` run has happened. **Observed on 10 October 2026**, see the [10 October update](#evidence-update-10-october-2026) | Dependency update tooling, alerts and continuing scans are active |
 
 ### At publication
 
@@ -623,9 +651,9 @@ the GitHub REST documentation on 7 October 2026.
 |---|---|
 | Required check, bypass off and the blocked throwaway pull request. `CODEOWNERS` was added on 9 October 2026; mandatory code-owner approval is deferred | AC-35 |
 | Rejected values in exception messages. Fixed on 9 October 2026 | AC-36 |
-| Redaction gate bypass. Fix proposed on 9 October 2026 in pull request #11; a draft, not merged | AC-37 |
-| Malformed audit encoding exit code | AC-38 |
-| Manual redaction sweep of `docs/`, `tests/`, `showcase/` | AC-39 |
+| Redaction gate bypass. Fixed on 9 October 2026 in pull request #11, merged as `fa28536` | AC-37 |
+| Malformed audit encoding exit code. Fixed on 10 October 2026, see the [10 October update](#evidence-update-10-october-2026) | AC-38 |
+| Manual redaction sweep of `docs/`, `tests/`, `showcase/`. Run on 10 October 2026; findings are intentional detector examples | AC-39 |
 | Consolidated security assessment, which takes the dependency evidence above | AC-47 |
 | Final full-history scan and visibility change | AC-53 |
 | Static analysis, SBOM and enforced scanning proven by seeded violations | AC-54 |

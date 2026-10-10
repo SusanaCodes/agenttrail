@@ -64,20 +64,28 @@ def load_labelled_cases(dataset_path=DEFAULT_DATASET_PATH):
         raise GoldenDatasetError(f"golden dataset not found: {dataset_path}")
     cases = []
     seen = set()
-    with open(dataset_path, encoding="utf-8") as f:
-        for line_no, line in enumerate(f, start=1):
-            where = f"{dataset_path}:{line_no}"
-            if not line.strip():
-                raise GoldenDatasetError(
-                    f"{where}: blank line in golden dataset"
-                )
-            try:
-                record = json.loads(line)
-            except json.JSONDecodeError as exc:
-                raise GoldenDatasetError(
-                    f"{where}: malformed JSON: {exc}"
-                ) from exc
-            cases.append(_build_labelled_case(record, where, seen))
+    # As in the audit reader: a byte sequence that is not UTF-8 is a
+    # malformed dataset, reported by path only. The decode error's
+    # message quotes the bytes, so it is neither interpolated nor chained.
+    try:
+        with open(dataset_path, encoding="utf-8") as f:
+            for line_no, line in enumerate(f, start=1):
+                where = f"{dataset_path}:{line_no}"
+                if not line.strip():
+                    raise GoldenDatasetError(
+                        f"{where}: blank line in golden dataset"
+                    )
+                try:
+                    record = json.loads(line)
+                except json.JSONDecodeError as exc:
+                    raise GoldenDatasetError(
+                        f"{where}: malformed JSON: {exc}"
+                    ) from exc
+                cases.append(_build_labelled_case(record, where, seen))
+    except UnicodeDecodeError:
+        raise GoldenDatasetError(
+            f"{dataset_path}: golden dataset is not valid UTF-8 text"
+        ) from None
     if not cases:
         raise GoldenDatasetError(f"golden dataset is empty: {dataset_path}")
     return tuple(cases)

@@ -239,6 +239,35 @@ class TestDecideCase(unittest.TestCase):
         with self.assertRaises(ModelResponseError):
             self.decide(response)
 
+    def test_additional_block_after_valid_tool_call_raises(self):
+        # Exactly one content block: a valid tool call followed by any
+        # further block (free text, or a second tool call) is rejected,
+        # and the extra block's content stays out of the error message.
+        planted = "ZZEXTRABLOCK-5c1e07-MARKER"
+        valid_input = {
+            "decision": "decide",
+            "confidence": 0.9,
+            "rationale_template": "DECIDED_EVIDENCE_FOR_INCOME",
+        }
+        extra_blocks = (
+            {"text": planted},
+            {
+                "toolUse": {
+                    "toolUseId": planted,
+                    "name": TOOL_NAME,
+                    "input": dict(valid_input),
+                }
+            },
+        )
+        for extra in extra_blocks:
+            response = tool_response(dict(valid_input))
+            response["output"]["message"]["content"].append(extra)
+            with self.assertRaises(ModelResponseError, msg=extra) as ctx:
+                self.decide(response)
+            message = str(ctx.exception)
+            self.assertIn("exactly one content block", message)
+            self.assertNotIn(planted, message)
+
     def test_malformed_content_raises_model_response_error(self):
         valid_tool_use = {
             "toolUseId": "tooluse_test",

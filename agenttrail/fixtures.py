@@ -191,37 +191,45 @@ def load_fixtures(fixture_path):
         )
     fixtures = {}
     seen_case_ids = set()
-    with open(fixture_path, encoding="utf-8") as f:
-        for line_no, line in enumerate(f, start=1):
-            if not line.strip():
-                raise FixtureValidationError(
-                    f"{fixture_path}:{line_no}: blank line in fixture file"
-                )
-            try:
-                entry = json.loads(line)
-            except json.JSONDecodeError as exc:
-                raise FixtureValidationError(
-                    f"{fixture_path}:{line_no}: malformed JSON: {exc}"
-                ) from exc
-            try:
-                validate_fixture_entry(entry)
-            except FixtureValidationError as exc:
-                raise FixtureValidationError(
-                    f"{fixture_path}:{line_no}: {exc}"
-                ) from exc
-            fingerprint = entry["request_sha256"]
-            if fingerprint in fixtures:
-                raise FixtureValidationError(
-                    f"{fixture_path}:{line_no}: duplicate request "
-                    f"fingerprint {fingerprint}"
-                )
-            if entry["case_id"] in seen_case_ids:
-                raise FixtureValidationError(
-                    f"{fixture_path}:{line_no}: duplicate case_id "
-                    f"{entry['case_id']}"
-                )
-            seen_case_ids.add(entry["case_id"])
-            fixtures[fingerprint] = entry
+    # As in the audit reader: a byte sequence that is not UTF-8 is a
+    # malformed fixture file, reported by path only. The decode error's
+    # message quotes the bytes, so it is neither interpolated nor chained.
+    try:
+        with open(fixture_path, encoding="utf-8") as f:
+            for line_no, line in enumerate(f, start=1):
+                if not line.strip():
+                    raise FixtureValidationError(
+                        f"{fixture_path}:{line_no}: blank line in fixture file"
+                    )
+                try:
+                    entry = json.loads(line)
+                except json.JSONDecodeError as exc:
+                    raise FixtureValidationError(
+                        f"{fixture_path}:{line_no}: malformed JSON: {exc}"
+                    ) from exc
+                try:
+                    validate_fixture_entry(entry)
+                except FixtureValidationError as exc:
+                    raise FixtureValidationError(
+                        f"{fixture_path}:{line_no}: {exc}"
+                    ) from exc
+                fingerprint = entry["request_sha256"]
+                if fingerprint in fixtures:
+                    raise FixtureValidationError(
+                        f"{fixture_path}:{line_no}: duplicate request "
+                        f"fingerprint {fingerprint}"
+                    )
+                if entry["case_id"] in seen_case_ids:
+                    raise FixtureValidationError(
+                        f"{fixture_path}:{line_no}: duplicate case_id "
+                        f"{entry['case_id']}"
+                    )
+                seen_case_ids.add(entry["case_id"])
+                fixtures[fingerprint] = entry
+    except UnicodeDecodeError:
+        raise FixtureValidationError(
+            f"{fixture_path}: fixture file is not valid UTF-8 text"
+        ) from None
     if not fixtures:
         raise FixtureValidationError(f"fixture file is empty: {fixture_path}")
     return fixtures

@@ -100,13 +100,13 @@ Each figure is a separate measurement. The gate, dataset and
 policy-replay figures were last reproduced on 8 October 2026 at commit
 `a558713`, with network access denied and no AWS credentials, using the
 commands in the [quickstart](#ten-minute-quickstart). The unit-test
-count is the current suite, re-run on 9 October 2026 after regression
-tests for error-message hygiene and the redaction gate were added; it
-was 345 on 8 October.
+count is the current suite, re-run on 10 October 2026 after regression
+tests for error-message hygiene, the redaction gate and malformed input
+encodings were added; it was 345 on 8 October and 430 on 9 October.
 
 | Figure | Result |
 |---|---|
-| Unit tests | 430 run, all passing, exit `0` |
+| Unit tests | 442 run, all passing, exit `0` |
 | Golden cases | 36 labelled synthetic cases |
 | Protected cases in the main gate | 12: the cases labelled low-confidence, which must all escalate |
 | Agent `v1` | 12 of 12 protected cases escalate. Gate PASS, exit `0` |
@@ -186,12 +186,12 @@ echo $?
 **Warning: v2 returning exit code `1` is expected.** It is the gate
 failing as intended on the seeded regression, not a broken checkout.
 Exit `2` from either command indicates a genuine execution error (a
-missing or invalid fixture, dataset or audit input).
+missing, invalid or undecodable fixture, dataset or audit input).
 
 ### Optional verification
 
 The full test suite runs in seconds and needs no setup. Expected:
-`Ran 430 tests`, output ending `OK`, exit `0`.
+`Ran 442 tests`, output ending `OK`, exit `0`.
 
 ```bash
 python3 -m unittest discover -s tests
@@ -216,10 +216,11 @@ as an operator-supplied assumption, not recorded policy provenance.
 ## Limitations
 
 The [security assessment](docs/security-assessment.md) consolidates two
-security reviews of this repository. It is a draft: repository
-enforcement, a manual redaction sweep and final verification of the
-commit to be published are still pending, and it lists implementation
-defects that are open. Read it before relying on anything here.
+security reviews of this repository and a third, pre-publication
+review. It records what has been verified and what has not: repository
+enforcement and final verification of the exact commit to be published
+are still pending, and it lists the implementation findings that remain
+open. Read it before relying on anything here.
 
 Two limits of the evaluation are stated in the same words wherever
 they appear in the documentation.
@@ -313,8 +314,10 @@ on personal resources and accounts, with part of the build done in
 allocated working hours. Ownership of the work and the right to publish
 it have not been determined in writing; the
 [open-code assessment](docs/open-code-assessment.md#licence-and-provenance)
-records the position. The repository is private at the time of writing,
-and nothing here says that publication has been authorised.
+records the position. Nothing in this repository says that publication
+has been authorised; if you are reading this on a public page, the
+decision that made it public is recorded in the open-code assessment,
+not here.
 
 ## Maintenance, security and dependencies
 
@@ -328,8 +331,9 @@ best-efforts basis. Only the head of `main` is maintained.
   being maintained.
 - **Security:** [SECURITY.md](SECURITY.md) gives the private reporting
   route and response targets. Do not report vulnerabilities in public
-  issues. Private reporting is not active yet; it can only be enabled
-  once the repository is public.
+  issues. GitHub only offers private reporting on public repositories,
+  so the route is enabled as a publication step; `SECURITY.md` says
+  whether that step has been verified.
 - **Dependencies:** the quickstart and every offline path need no
   third-party packages. Optional live recording (`boto3`), deck
   generation (`python-pptx`) and maintenance tooling (`pip-tools`,

@@ -287,10 +287,11 @@ should be rejected in review.
 - **Gate exits `1`** — behaviour regressed or routing mismatched. Do
   not deploy. Revert or fix the change that altered behaviour; the
   `reason:`/`mismatch:` lines identify the cases.
-- **Gate exits `2`** — the inputs could not be trusted (missing or
-  invalid fixtures, dataset, or audit records). Treat as red, not as
-  flaky; fix the inputs. Re-recording fixtures is an explicit, reviewed
-  step (`docs/model-fixtures.md`), never something CI does.
+- **Gate exits `2`** — the inputs could not be trusted (missing,
+  invalid or undecodable fixtures, dataset, or audit records). Treat as
+  red, not as flaky; fix the inputs. Re-recording fixtures is an
+  explicit, reviewed step (`docs/model-fixtures.md`), never something
+  CI does.
 - **Rollback** — reverting the offending commit restores the previous
   behaviour and the gate goes green again; the gate itself holds no
   state to roll back.
