@@ -10,7 +10,10 @@ The communication goal — the one thing assessors should remember:
 **AgentTrail detects tested routing regressions recorded in the audit
 trail for the selected fixture snapshot.** Fixture responses are not
 authenticated, and merge blocking depends on GitHub repository rules
-requiring the `evaluation-gate` check, which is currently unverified.
+requiring the `evaluation-gate` check, which was unverified when the
+showcase was given and has been required by an active ruleset on
+`main` since 11 October 2026 (see
+[ci-gate.md](../docs/ci-gate.md#required-branch-protection)).
 
 There is **one** authoritative presentation path: three slides, two
 live terminal commands, a ~45–50-second fallback recording. The

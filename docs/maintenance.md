@@ -89,8 +89,10 @@ the schedule only start once the configuration is on `main`; the
 actually run.
 
 The maintainer merges an update pull request only when the
-`security-hygiene` and `ci-gate` checks pass on it. This is a manual
-rule until the checks are required by a ruleset (AC-35). Dependabot may
+`security-hygiene` and `ci-gate` checks pass on it. Since 11 October
+2026 the `main-protection` ruleset requires the `evaluation-gate`,
+`dependency-audit` and `secret-scan` checks on pull requests into
+`main` (AC-35), so this is no longer only a manual rule. Dependabot may
 regenerate a lock under a different Python version. The hash-locked
 install step in `security-hygiene` is intended to fail in that case,
 but this has not been observed; if it happens, regenerate that lock on

@@ -66,7 +66,9 @@ That sentence is the whole claim, and it has these limits:
   trustworthy as the committed fixture file.
 - Merge blocking depends on GitHub repository rules requiring the
   `evaluation-gate` check. The workflow file alone does not enforce it.
-  Enforcement is currently unverified.
+  Since 11 October 2026 an active ruleset on `main` requires that
+  check (see [Limitations](#limitations)); a required check does not
+  prove that the job still enforces anything.
 
 Two agent versions run through the identical pipeline against the same
 36-case golden dataset and the same version-controlled policy (minimum
@@ -218,9 +220,10 @@ as an operator-supplied assumption, not recorded policy provenance.
 The [security assessment](docs/security-assessment.md) consolidates two
 security reviews of this repository and a third, pre-publication
 review. It records what has been verified and what has not: repository
-enforcement and final verification of the exact commit to be published
-are still pending, and it lists the implementation findings that remain
-open. Read it before relying on anything here.
+enforcement was activated and proved on 11 October 2026, final
+verification of each published commit is recorded on its ticket, and
+it lists the implementation findings that remain open. Read it before
+relying on anything here.
 
 Two limits of the evaluation are stated in the same words wherever
 they appear in the documentation.
@@ -247,9 +250,20 @@ documents. The remaining boundaries:
 - **No tamper-evident trail.** The audit trail is a local append-only
   JSONL file: demonstrator storage. It is not tamper-evident, and it is
   not durable production storage.
-- **Unverified merge enforcement.** Whether a failed gate stops a merge
-  depends on GitHub repository rules that have not been verified. There
-  is no real deployment to stop.
+- **Merge enforcement verified, with limits.** Since 11 October 2026
+  the active `main-protection` ruleset (id 24875447) on `main` requires
+  the `evaluation-gate`, `dependency-audit` and `secret-scan` checks
+  from GitHub Actions, requires branches to be up to date, requires a
+  pull request, blocks force-push and deletion, and has no bypass
+  actors. A pull request without the `evaluation-gate` check was
+  blocked ([pull request #16](https://github.com/SusanaCodes/agenttrail/pull/16));
+  that attribution is by elimination against the effective rules,
+  because GitHub's API does not name the missing check. A required
+  check does not stop its own workflow logic being weakened, no
+  independent human review is established (code-owner approval is
+  deferred in this sole-owner repository), and there is no real
+  deployment to stop. Evidence:
+  [security assessment, verification record](docs/security-assessment.md#verification-record).
 - **No production-readiness or compliance claim.** This is a focused
   engineering demonstration, not a product. It is not
   production-hardened and does not establish compliance with the EU AI
@@ -302,8 +316,9 @@ Start with the **[project manual](docs/project-manual.md)** for the
 full end-to-end description, architecture, Article 12 mapping and
 per-topic documentation index, and the
 **[decision log](docs/decision-log.md)** for why it was built this way.
-The **[security assessment](docs/security-assessment.md)** (draft)
-records the findings, risks and outstanding verification. The complete
+The **[security assessment](docs/security-assessment.md)** (a working
+assessment, not a sign-off) records the findings, risks, verification
+record and remaining limits. The complete
 demonstrated v1 and v2 output is in the
 [demo scenario](docs/demo-scenario.md).
 
@@ -332,9 +347,13 @@ best-efforts basis. Only the head of `main` is maintained.
   being maintained.
 - **Security:** [SECURITY.md](SECURITY.md) gives the private reporting
   route and response targets. Do not report vulnerabilities in public
-  issues. GitHub only offers private reporting on public repositories,
-  so the route is enabled as a publication step; `SECURITY.md` says
-  whether that step has been verified.
+  issues. Private vulnerability reporting, secret scanning and push
+  protection were enabled and read back on 11 October 2026. No test
+  report has been submitted and no blocked push has been observed, so
+  the triage path and the push-protection block are unexercised;
+  `SECURITY.md` and the
+  [open-code assessment](docs/open-code-assessment.md#evidence-update-11-october-2026)
+  record the state.
 - **Dependencies:** the quickstart and every offline path need no
   third-party packages. Optional live recording (`boto3`), deck
   generation (`python-pptx`) and maintenance tooling (`pip-tools`,
