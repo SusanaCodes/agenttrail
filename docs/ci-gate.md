@@ -13,8 +13,9 @@ exit code, with these limits:
   [model-fixtures.md](model-fixtures.md#what-the-request-hash-does-and-does-not-establish)).
 - Merge blocking depends on GitHub repository rules requiring the
   `evaluation-gate` check. The workflow file alone does not enforce it.
-  Enforcement is currently unverified (see
-  [Required branch protection](#required-branch-protection)).
+  Since 11 October 2026 an active ruleset on `main` requires the check
+  (see [Required branch protection](#required-branch-protection)); a
+  required check does not prove that the job still enforces anything.
 - A failed gate and a skipped `deployment-demo` job are what this
   repository demonstrates. Neither is enforcement of merges, and
   neither is a blocked real deployment: `deployment-demo` is a no-op
@@ -252,9 +253,25 @@ GitHub (Settings → Branches, or a repository ruleset targeting `main`):
 3. Require branches to be up to date before merging (recommended, so
    the gate ran against the merged state).
 
-Without the required check, a red gate is advisory only. Whether these
-rules are configured on the GitHub repository has not been checked, so
-merge enforcement is currently unverified.
+Without the required check, a red gate is advisory only.
+
+**State on 11 October 2026.** The repository ruleset `main-protection`
+(id 24875447) on `main` is active with no bypass actors. It requires a
+pull request (0 approvals; code-owner approval is deferred in this
+sole-owner repository), requires the `evaluation-gate`,
+`dependency-audit` and `secret-scan` checks pinned to GitHub Actions
+with the up-to-date requirement, and blocks force-push and deletion.
+[Pull request #16](https://github.com/SusanaCodes/agenttrail/pull/16),
+which removed the `evaluation-gate` job and kept a differently named
+no-op job, was blocked with every present check green; the attribution
+to the missing required check is by elimination against the effective
+rules, because GitHub's API does not name it. The read-back and the
+proof are in the
+[security assessment](security-assessment.md#verification-record). A
+required check proves the job ran and reported success, not that the
+job still enforces this gate: a workflow edit that ignores the gate
+step's exit code would leave the check green. A pull request whose
+gate fails has not been tested, and `deployment-demo` remains a no-op.
 
 ## Proving the gate goes red safely
 

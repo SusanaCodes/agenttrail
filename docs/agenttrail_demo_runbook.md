@@ -11,7 +11,7 @@ AgentTrail writes each AI-agent decision to a structured audit trail. The evalua
 Limits of that claim:
 
 - Fixture responses are not authenticated.
-- Merge blocking depends on GitHub repository rules requiring the `evaluation-gate` check. The workflow file alone does not enforce it. Enforcement is currently unverified.
+- Merge blocking depends on GitHub repository rules requiring the `evaluation-gate` check. The workflow file alone does not enforce it. Since 11 October 2026 an active ruleset on `main` requires that check; a required check does not prove the job still enforces anything (see [ci-gate.md](ci-gate.md#required-branch-protection)).
 - The demo shows a gate failing. It does not show a merge or a real deployment being stopped: the only deployment job in the workflow is a no-op simulation.
 
 Safety policy:
@@ -198,7 +198,7 @@ Use the same new path in the policy-replay command.
 
 ### v2 exits with code 1
 
-This is the intended result. Exit `1` means the behavioural safety policy was breached and the gate failed. Nothing is deployed by this demo, and whether a failed gate stops a merge depends on GitHub repository rules that are currently unverified.
+This is the intended result. Exit `1` means the behavioural safety policy was breached and the gate failed. Nothing is deployed by this demo, and whether a failed gate stops a merge depends on GitHub repository rules; an active ruleset on `main` has required the `evaluation-gate` check since 11 October 2026 (see [ci-gate.md](ci-gate.md#required-branch-protection)).
 
 ### A command exits with code 2
 
