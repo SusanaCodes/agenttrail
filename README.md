@@ -6,131 +6,132 @@ AgentTrail demonstrates a reusable engineering pattern for AI-agent
 decisions: **record what happened, evaluate the recorded behaviour,
 and gate changes against explicit expectations.**
 
-It is a small, offline reference implementation. An agent routes
-structured cases, each decision is written to an audit trail, and a
-CI gate scores that trail against labelled examples. The bundled
-fictional case-review scenario makes the pattern runnable; other
-workflows need their own schemas, decision logic, examples and checks.
-See [Adapting the pattern](#adapting-the-pattern).
+This offline reference implementation writes decisions to an audit
+trail, then scores the stored records against labelled examples. It
+detects tested routing regressions for the selected fixture snapshot.
+The bundled fictional routing task makes that control pattern runnable.
 
-The demonstrated result is specific: AgentTrail detects tested routing
-regressions recorded in the audit trail for the selected fixture
-snapshot. The picture below is the gate failing on a regression that
-was seeded for the purpose.
+The image shows the gate rejecting three intentionally seeded missed
+escalations: 9 of 12 protected cases escalate, below the required 12.
 
 ![Output of the v2 gate command: CI GATE: FAIL, with the line "Breached safety property: escalation rate on the low-confidence set", measured value 75.0% against a required minimum of 100.0%, and exit code 1](docs/assets/ci-gate-v2-failure.png)
 
-*Captured CLI output, rendered as an image.* The text is the verbatim
-standard output of `python3 -m agenttrail.ci_gate --agent-version v2`,
-captured on 8 October 2026; the
-[raw capture](docs/assets/ci-gate-v2-failure.txt) is kept beside it.
-The command line, the exit-code line and the red highlighting were
-added when rendering; the CLI prints no colour. "Gate blocked" is the
-gate's own wording for a failed gate. It is not a blocked merge or a
-blocked deployment (see [Limitations](#limitations)).
+*Captured CLI output rendered as an image, 8 October 2026.* The
+[raw capture](docs/assets/ci-gate-v2-failure.txt) is verbatim stdout;
+the command, exit-code line and red highlighting were added to the image.
+"Gate blocked" means a failed gate; merge and deployment boundaries
+are in [Limitations](#limitations). The badge follows pushes to `main`,
+excluding manual seeded-`v2` runs.
 
-The badge shows the latest `ci-gate` run for a push to `main`. Manual
-runs of the seeded `v2` demonstration are excluded from it.
+## Ten-minute quickstart
 
-## The problem
+Prerequisites: Git and Python 3 (CI pins Python 3.12). Nothing else is
+needed: no third-party packages, no virtual environment, no AWS
+credentials, and no network access after the clone. Run every command
+from the repository root.
 
-Article 12 of the EU AI Act requires high-risk AI systems to
-technically allow automatic recording of events so that their
-operation can be traced appropriately. AgentTrail explores that
-engineering problem for an AI agent: recording what it decided, on
-which inputs, and under which model, prompt and policy, then using
-those records to detect a tested routing regression in a CI gate. It
-is a focused engineering demonstration. It does not establish legal
-compliance or production readiness.
+```bash
+git clone https://github.com/SusanaCodes/agenttrail.git
+cd agenttrail
+```
+
+Run the baseline v1 gate. Expected: `CI GATE: PASS`,
+`measured_rate=1.0000`, `low_confidence_escalated=12`, exit `0`.
+
+```bash
+python3 -m agenttrail.ci_gate --agent-version v1
+echo $?
+```
+
+Run the intentionally regressed v2 gate. Expected: `CI GATE: FAIL`,
+`measured_rate=0.7500`, `low_confidence_escalated=9`, exit `1`.
+
+```bash
+python3 -m agenttrail.ci_gate --agent-version v2
+echo $?
+```
+
+`v2` returning exit code `1` is the expected seeded failure.
+Exit `2` from either command indicates a genuine execution error (a
+missing, invalid or undecodable fixture, dataset or audit input).
+
+### Optional verification
+
+The full test suite runs in seconds and needs no setup. Expected:
+`Ran 442 tests`, output ending `OK`, exit `0`.
+
+```bash
+python3 -m unittest discover -s tests
+```
+
+Policy replay needs a stored trail, so write one to a temporary path
+first. Expected from the second command: `records evaluated: 36`,
+`unchanged: 35`, `flipped: 1`, the line
+`SYN-031: decide -> escalate`, exit `0`.
+
+```bash
+TRAIL="$(mktemp -d)/replay.audit.jsonl"
+python3 -m agenttrail.eval --audit-path "$TRAIL"
+python3 -m agenttrail.policy_replay --audit-path "$TRAIL" \
+  --target-policy v2 --legacy-baseline-policy v1
+```
+
+Current audit records do not store `policy_version`. The
+`--legacy-baseline-policy v1` option explicitly declares the baseline
+as an operator-supplied assumption, not recorded policy provenance.
 
 ## What AgentTrail does
 
-- An agent routes structured cases in a fictional worked example.
-- For each case it either decides automatically or escalates to a human.
-- Every decision is appended to a structured, append-only audit trail.
-- A behavioural evaluation replays a labelled golden dataset and scores
-  what was actually written to that trail, never the model's return
-  value.
-- A deterministic CI gate fails when that audited routing disagrees
-  with a golden label, or when the escalation rate on the labelled
-  low-confidence cases falls below the version-controlled minimum.
+- Routes a structured case automatically or escalates it to a human.
+- Appends each decision to a structured audit trail.
+- Evaluates the records actually stored, rather than the model's return value.
+- Fails a deterministic CI gate when audited routing disagrees with a
+  golden label or the low-confidence escalation rate misses its minimum.
+- Separately replays stored decisions under a proposed routing policy
+  to report which outcomes would change.
 
-Model responses come from recorded Amazon Bedrock fixtures matched by
-request fingerprint, so evaluation and gating run offline,
-deterministically and repeatably: no credentials, no network, and the
-same verdict for the same code, dataset and fixture set.
+Model responses come from committed fixtures matched by request
+fingerprint, so evaluation and gating need no credentials or live
+model calls. Recording new fixtures is a separate, paid Bedrock path.
 
-## The worked example
+## The worked example and adaptation
 
-The bundled scenario uses **fictional benefit-style cases** to illustrate
-whether an agent should decide automatically or escalate for human
-review. Its inputs are restricted to `age_band`, `income_band` and
-`evidence_status`. The invented labels and routing rules are test data;
-they do not represent a real service, benefit policy or operational
-decision system. No real applicant data is used.
+The bundled **fictional benefit-style cases** use only `age_band`,
+`income_band` and `evidence_status`; missing evidence must escalate.
+The cases, rules and labels are invented test data, with no real
+applicant data or operational benefit policy.
 
-The example gives the audit-and-evaluation pattern a concrete test:
-cases with missing evidence must escalate. The same design can be
-adapted to other structured decision workflows, with expectations
-defined for that workflow rather than borrowed from this example.
+The routing task is deliberately simple and rule-derivable: it
+demonstrates the control pattern, rather than the business value of
+using an LLM or a multi-step autonomous agent.
 
-## Adapting the pattern
-
-The reusable part is the pipeline: **decision → stored audit record →
-behavioural evaluation → version-controlled gate**. For example, a
-support-ticket triage prototype could evaluate routing to a specialist,
-or an operational change-review prototype could check when human review
-is required. These are possible adaptations, not bundled integrations.
-
-The current implementation has an example-specific schema, prompts,
-decision vocabulary, labels and scoring rules, plus a Bedrock Converse
-client contract. Adapting it requires code and test changes; it is not
-a universal agent adapter or a configuration-only switch. The
-[adaptation guide](docs/adapting-agenttrail.md) explains what to replace
-and what to verify.
+The reusable pipeline is **decision → stored audit record → behavioural
+evaluation → version-controlled gate**. Adapting it to workflows such
+as support triage or operational change review requires code and tests
+for their schemas, prompts, decision logic, client contracts, labels and
+scoring rules. See the [adaptation guide](docs/adapting-agenttrail.md).
 
 ## Headline demonstration
 
-AgentTrail detects tested routing regressions recorded in the audit
-trail for the selected fixture snapshot.
+Both agent versions use the same 36-case golden dataset and gate policy:
+minimum low-confidence escalation rate `1.0000`, tolerance `0.0000`.
 
-That sentence is the whole claim, and it has these limits:
-
-- Fixture responses are not authenticated. The SHA-256 fingerprint
-  stored with each fixture matches a request to its recorded entry. It
-  is not a signature over the response, so the verdict is only as
-  trustworthy as the committed fixture file.
-- Merge blocking depends on GitHub repository rules requiring the
-  `evaluation-gate` check. The workflow file alone does not enforce it.
-  Since 11 October 2026 an active ruleset on `main` requires that
-  check (see [Limitations](#limitations)); a required check does not
-  prove that the job still enforces anything.
-
-Two agent versions run through the identical pipeline against the same
-36-case golden dataset and the same version-controlled policy (minimum
-low-confidence escalation rate `1.0000`, tolerance `0.0000`):
-
-| Version | Behaviour on the 12 low-confidence cases | Escalation rate | Gate |
+| Version | Behaviour on the 12 protected cases | Escalation rate | Gate |
 |---|---|---|---|
-| `v1` (baseline) | all 12 escalate | `1.0000` | PASS, exit `0` |
-| `v2` (intentionally regressed) | 9 of 12 escalate; 3 are auto-decided | `0.7500` | FAIL, exit `1` |
+| `v1` (recorded baseline) | All 12 escalate | `1.0000` | PASS, exit `0` |
+| `v2` (synthetic, seeded regression) | 9 escalate; 3 auto-decide | `0.7500` | FAIL, exit `1` |
 
-`v2` is a deliberately regressed demonstration, not a deployed
-production version. Its failures are deliberately seeded: an
-over-confident prompt and clearly marked synthetic fixtures make three
-low-confidence cases auto-decide, so that the gate's failure path can
-be shown. When it fails, the gate identifies the breached property as
-the escalation rate on the low-confidence set, reports the measured
-shortfall, and exits non-zero rather than reporting a generic test
-failure.
+The `v1` responses are described by the maintainer as recorded from
+Bedrock; their origin is not independently authenticated. The `v2`
+fixtures are constructed responses paired with an over-confident
+prompt to demonstrate the failure path. Neither verdict measures
+current live model behaviour.
 
-What is demonstrated is a failed gate. In GitHub Actions, the same
-failure turns the run red and leaves the downstream
-deployment-simulation job (`deployment-demo`) skipped. That job is a
-no-op that deploys nothing, so a skipped simulation is not a blocked
-real deployment, and no real deployment workflow exists. A red run
-does not by itself stop a merge either; that is the repository-rule
-dependency stated above.
+On failure, the gate names the breached escalation-rate property,
+reports the shortfall and exits non-zero. A manual `v2` Actions run
+turns red and skips the downstream no-op `deployment-demo` job;
+[the recorded run](https://github.com/SusanaCodes/agenttrail/actions/runs/38130274254)
+shows that path.
 
 ### Verified figures
 
@@ -165,14 +166,14 @@ Two different things are called `v2`, and they are unrelated:
 ## Architecture
 
 ```mermaid
-flowchart LR
-    DATA["Golden dataset<br/>36 labelled cases"]
-    FIX["Recorded fixtures<br/>offline replay"]
+flowchart TD
+    DATA["Golden dataset: 36 labelled cases"]
+    FIX["Recorded fixtures: offline replay"]
     HARNESS["Evaluation harness"]
-    AGENT["Agent<br/>decide or escalate"]
-    TRAIL[("Audit trail<br/>append-only JSONL")]
+    AGENT["Agent: decide or escalate"]
+    TRAIL[("Audit trail: append-only JSONL")]
     GATE{"CI gate"}
-    REPLAY["Policy replay<br/>read-only"]
+    REPLAY["Policy replay: read-only"]
 
     DATA -->|"cases and labels"| HARNESS
     HARNESS -->|"1. invokes per case"| AGENT
@@ -193,76 +194,15 @@ trail and writes nothing. The agent is never shown the expected labels.
 The [project manual](docs/project-manual.md#4-architecture) has the
 full diagram.
 
-## Ten-minute quickstart
-
-Prerequisites: Git and Python 3 (CI pins Python 3.12). Nothing else is
-needed: no third-party packages, no virtual environment, no AWS
-credentials, and no network access after the clone. Run every command
-from the repository root.
-
-```bash
-git clone https://github.com/SusanaCodes/agenttrail.git
-cd agenttrail
-```
-
-Run the baseline v1 gate. Expected: `CI GATE: PASS`,
-`measured_rate=1.0000`, `low_confidence_escalated=12`, exit `0`.
-
-```bash
-python3 -m agenttrail.ci_gate --agent-version v1
-echo $?
-```
-
-Run the intentionally regressed v2 gate. Expected: `CI GATE: FAIL`,
-`measured_rate=0.7500`, `low_confidence_escalated=9`, exit `1`.
-
-```bash
-python3 -m agenttrail.ci_gate --agent-version v2
-echo $?
-```
-
-**Warning: v2 returning exit code `1` is expected.** It is the gate
-failing as intended on the seeded regression, not a broken checkout.
-Exit `2` from either command indicates a genuine execution error (a
-missing, invalid or undecodable fixture, dataset or audit input).
-
-### Optional verification
-
-The full test suite runs in seconds and needs no setup. Expected:
-`Ran 442 tests`, output ending `OK`, exit `0`.
-
-```bash
-python3 -m unittest discover -s tests
-```
-
-Policy replay needs a stored trail, so write one to a temporary path
-first. Expected from the second command: `records evaluated: 36`,
-`unchanged: 35`, `flipped: 1`, the line
-`SYN-031: decide -> escalate`, exit `0`.
-
-```bash
-TRAIL="$(mktemp -d)/replay.audit.jsonl"
-python3 -m agenttrail.eval --audit-path "$TRAIL"
-python3 -m agenttrail.policy_replay --audit-path "$TRAIL" \
-  --target-policy v2 --legacy-baseline-policy v1
-```
-
-Current audit records do not store `policy_version`. The
-`--legacy-baseline-policy v1` option explicitly declares the baseline
-as an operator-supplied assumption, not recorded policy provenance.
-
 ## Limitations
 
-The [security assessment](docs/security-assessment.md) consolidates two
-security reviews of this repository and a third, pre-publication
-review. It records what has been verified and what has not: repository
-enforcement was activated and proved on 11 October 2026, final
-verification of each published commit is recorded on its ticket, and
-it lists the implementation findings that remain open. Read it before
-relying on anything here.
-
-Two limits of the evaluation are stated in the same words wherever
-they appear in the documentation.
+This is a prototype and reference implementation, with no
+production-readiness, legal-compliance or government-endorsement claim.
+The [security assessment](docs/security-assessment.md) records verified
+controls, open findings and the evidence for them; its
+[verification record](docs/security-assessment.md#verification-record)
+and the [open-code assessment](docs/open-code-assessment.md) retain the
+full control history.
 
 The low-confidence override is protected by unit tests. The
 fixture-backed behavioural evaluation does not exercise it, because no
@@ -273,142 +213,70 @@ byte for byte. It does not bind the response to that request and does
 not prove that Bedrock produced the response. Fixture re-recording is a
 reviewed act that the gate cannot itself authenticate.
 
-Detail is in the [CI gate](docs/ci-gate.md#known-coverage-gap-the-low-confidence-override)
-and [model fixtures](docs/model-fixtures.md#what-the-request-hash-does-and-does-not-establish)
-documents. The remaining boundaries:
+Details: [CI gate coverage gap](docs/ci-gate.md#known-coverage-gap-the-low-confidence-override)
+and [fixture provenance](docs/model-fixtures.md#what-the-request-hash-does-and-does-not-establish).
+The other material boundaries are:
 
-- **Offline fixture evaluation.** The gate scores one recorded snapshot
-  of one model. It says nothing about the current live model, overall
-  quality, fairness or bias.
-- **Unauthenticated fixture provenance.** That the `v1` set is a
-  recording is the maintainer's statement. Nothing in the repository
-  verifies it, and the `v2` set is synthetic by design.
-- **No tamper-evident trail.** The audit trail is a local append-only
-  JSONL file: demonstrator storage. It is not tamper-evident, and it is
-  not durable production storage.
-- **Merge enforcement verified, with limits.** Since 11 October 2026
-  the active `main-protection` ruleset (id 24875447) on `main` requires
-  the `evaluation-gate`, `dependency-audit` and `secret-scan` checks
-  from GitHub Actions, requires branches to be up to date, requires a
-  pull request, blocks force-push and deletion, and has no bypass
-  actors. A pull request without the `evaluation-gate` check was
-  blocked ([pull request #16](https://github.com/SusanaCodes/agenttrail/pull/16));
-  that attribution is by elimination against the effective rules,
-  because GitHub's API does not name the missing check. A required
-  check does not stop its own workflow logic being weakened, no
-  independent human review is established (code-owner approval is
-  deferred in this sole-owner repository), and there is no real
-  deployment to stop. Evidence:
-  [security assessment, verification record](docs/security-assessment.md#verification-record).
-- **No production-readiness or compliance claim.** This is a focused
-  engineering demonstration, not a product. It is not
-  production-hardened and does not establish compliance with the EU AI
-  Act or any other requirement.
-
-Scope:
-
-- Cases, rules, labels and evaluation data are synthetic. They do not
-  represent real benefit policy.
-- The redaction gate scans committed record data for three supported
-  identifier formats (National Insurance numbers, UK postcodes and NHS
-  numbers). It does not detect all personal data, and a passing scan
-  does not show that none is present.
-- There are no dashboards, no RAG, no vector database and no
-  multi-agent orchestration.
-- Record lookup displays a stored record by its ID. It does not
-  re-execute or reproduce a past decision.
-- Live fixture recording is separate from the offline demonstration.
-  It requires `boto3`, installed from the hash-locked
-  `requirements-recording.txt`, configured AWS credentials with Bedrock
-  access, and makes paid live calls. Nothing in the quickstart touches
-  it.
-
-## Roadmap: Phase 2 (planned, not built)
-
-Nothing in this section exists in the repository. Today there is one
-direct Amazon Bedrock call site, a purpose-built evaluation harness and
-a JSONL trail, and every offline path uses only the Python standard
-library.
-
-Phase 2 is a planned gateway that agent traffic would pass through,
-instead of the agent calling the model directly:
-
-| Planned component | Intended role | Status |
-|---|---|---|
-| FastAPI | Gateway endpoint that intercepts tool calls | Planned, not built |
-| LiteLLM | Routing layer for model calls, with budgets and fallback | Planned, not built |
-| Langfuse | Tracing over the decision path | Planned, not built |
-| Inspect | Scoring the golden dataset through an evaluation framework | Planned, not built |
-
-None of these is installed, imported or integrated, and none of the
-results above depends on them. The project manual maps today's
-components to
-[comparable tooling](docs/project-manual.md#10-industry-tooling-equivalents)
-and lists other [future work](docs/project-manual.md#13-future-improvements-phase-2).
+- **Offline scope.** Results cover a recorded snapshot and seeded
+  fixtures, not current live behaviour, general model quality, fairness
+  or bias. The verdict depends on the committed fixtures and labels.
+- **Storage and replay.** The local append-only JSONL trail is neither
+  tamper-evident nor durable production storage. Record lookup displays
+  a stored record; it does not reproduce a decision. Policy replay is
+  read-only change-impact evidence and neither approves nor rejects a
+  proposed policy; its legacy baseline is an operator declaration.
+- **Merge and deployment controls.** The `main-protection` ruleset
+  requires `evaluation-gate`, `dependency-audit` and `secret-scan`, an
+  up-to-date pull request, and no bypass; force-push and deletion are
+  blocked. A missing-check PR was blocked
+  ([PR #16](https://github.com/SusanaCodes/agenttrail/pull/16), attribution
+  by elimination against the effective rules). A required check cannot
+  prove its own workflow logic has not been weakened. `CODEOWNERS`
+  records file ownership; independent code-owner approval is deferred
+  in this sole-maintainer repository. The deployment job is a no-op;
+  no real deployment workflow exists.
+- **Privacy scope.** The redaction gate checks three supported formats:
+  National Insurance numbers, UK postcodes and NHS numbers. A passing
+  scan does not establish that all personal data is absent.
+- **Implementation scope.** There is no RAG, vector database,
+  multi-agent orchestration, dashboard or runtime monitoring. Optional
+  live fixture recording needs `boto3` from the hash-locked
+  `requirements-recording.txt`, AWS credentials and Bedrock access;
+  it makes paid calls and is outside the quickstart.
 
 ## Documentation
 
-Start with the **[project manual](docs/project-manual.md)** for the
-full end-to-end description, architecture, Article 12 mapping and
-per-topic documentation index, and the
-**[decision log](docs/decision-log.md)** for why it was built this way.
-The **[security assessment](docs/security-assessment.md)** (a working
-assessment, not a sign-off) records the findings, risks, verification
-record and remaining limits. The complete
-demonstrated v1 and v2 output is in the
-[demo scenario](docs/demo-scenario.md).
+- [Project manual](docs/project-manual.md): end-to-end walkthrough,
+  architecture, Article 12 mapping and documentation index.
+- [Decision log](docs/decision-log.md): engineering choices and trade-offs.
+- [Security assessment](docs/security-assessment.md): findings, risks
+  and verification evidence; an assessment, not a sign-off.
+- [Demo scenario](docs/demo-scenario.md): full baseline and seeded-failure output.
 
-## Provenance
+Future gateway and tooling work is **planned, not built**; see the
+[Phase 2 roadmap](docs/project-manual.md#13-future-improvements-phase-2).
 
-AgentTrail was built as a solo final project on a training programme,
-on personal resources and accounts, with part of the build done in
-allocated working hours. Ownership of the work and the right to publish
-it have not been determined in writing. On 10 October 2026 the
-maintainer decided to publish without such a determination, on her
-understanding that the programme context permits it. That is a
-maintainer decision, not a written approval from the programme or the
-employer, and not an ownership determination; the
-[open-code assessment](docs/open-code-assessment.md#licence-and-provenance)
-records the position and the decision.
+## Maintenance, security and licence
 
-## Maintenance, security and dependencies
+Susana ([@SusanaCodes](https://github.com/SusanaCodes)) maintains the
+prototype on a best-efforts basis; only the head of `main` is maintained.
 
-AgentTrail is maintained by Susana
-([@SusanaCodes](https://github.com/SusanaCodes)) as a prototype, on a
-best-efforts basis. Only the head of `main` is maintained.
+- [Maintenance and ownership](docs/maintenance.md): support scope,
+  review dates, dependency review, handover and retirement.
+- [Security policy](SECURITY.md): private reporting and response targets.
+  Reporting, secret scanning and push protection were enabled and read
+  back on 11 October 2026; the reporting and push-block paths remain
+  unexercised. See the
+  [control evidence](docs/open-code-assessment.md#evidence-update-11-october-2026).
+- Optional recording, deck and maintenance dependencies install from
+  hash-locked `requirements-*.txt` files; Dependabot proposes weekly
+  updates, merged only after security and gate checks pass.
+- [MIT licence](LICENSE). The
+  [September safety review](docs/pre-publication-safety-review.md) is
+  historical evidence and does not cover later changes.
 
-- **Maintenance:** [maintenance and ownership](docs/maintenance.md)
-  covers support scope, the next review date, dependency review,
-  handover, and how the repository is marked and archived if it stops
-  being maintained.
-- **Security:** [SECURITY.md](SECURITY.md) gives the private reporting
-  route and response targets. Do not report vulnerabilities in public
-  issues. Private vulnerability reporting, secret scanning and push
-  protection were enabled and read back on 11 October 2026. No test
-  report has been submitted and no blocked push has been observed, so
-  the triage path and the push-protection block are unexercised;
-  `SECURITY.md` and the
-  [open-code assessment](docs/open-code-assessment.md#evidence-update-11-october-2026)
-  record the state.
-- **Dependencies:** the quickstart and every offline path need no
-  third-party packages. Optional live recording (`boto3`), deck
-  generation (`python-pptx`) and maintenance tooling (`pip-tools`,
-  `pip-audit`) each install from a hash-locked `requirements-*.txt`.
-  Dependabot is configured for weekly update proposals; the maintainer
-  merges them only when the security and gate checks pass.
-
-AgentTrail uses the GDS/DSIT guidance of 14 May 2026 as its publication
-checklist. Implemented controls, evidence and outstanding gaps are
-documented in the [open-code assessment](docs/open-code-assessment.md).
-This is the maintainer's own assessment of a prototype. It is not a
-government endorsement, a certification, or a claim of legal compliance
-or production readiness.
-
-## Licence
-
-MIT, see [LICENSE](LICENSE). The copyright line and the unresolved
-provenance position behind it are recorded in the
-[open-code assessment](docs/open-code-assessment.md). A
-[pre-publication safety review](docs/pre-publication-safety-review.md)
-was completed in September 2026 before planned public release; it is
-historical evidence and does not cover later changes.
+**Provenance:** a solo training-programme project built on personal
+resources and accounts, partly in allocated working hours; the
+maintainer decided to publish on 10 October 2026, without a written
+ownership or publishing-rights determination, as recorded in the
+[full provenance statement](docs/open-code-assessment.md#licence-and-provenance).
