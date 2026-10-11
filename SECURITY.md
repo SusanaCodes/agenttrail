@@ -58,15 +58,17 @@ vulnerability.
 The chosen route is **GitHub private vulnerability reporting**, which
 avoids publishing a personal email address.
 
-> **Status: activation pending.** GitHub offers private vulnerability
-> reporting on public repositories only. It has not been enabled or
-> tested for this repository, so no claim is made here that the route
-> or its notifications work. Enabling it and reading the setting back
-> are publication steps recorded in the
-> [open-code assessment](docs/open-code-assessment.md). Until that is
-> done there is no verified private route.
+> **Status: enabled on 11 October 2026.** The repository was made
+> public that day and private vulnerability reporting was enabled
+> through the GitHub API and read back as `enabled: true`. A signed-out
+> request to the repository's Advisories page shows the "Report a
+> vulnerability" link; the form itself requires a GitHub account. No
+> test report has been submitted, so nothing here claims that a report
+> reaches the maintainer or that the triage process below has been
+> exercised. The setting and its read-back are recorded in the
+> [open-code assessment](docs/open-code-assessment.md#evidence-update-11-october-2026).
 
-Once it is enabled:
+To report:
 
 1. Open the repository's **Security** tab, then **Advisories**, then
    **Report a vulnerability**

@@ -16,8 +16,10 @@ that commit on 8 October 2026. That later evidence is kept apart in
 [Evidence update: 8 October 2026](#evidence-update-8-october-2026).
 A later change under AC-35 is recorded in
 [Evidence update: 9 October 2026](#evidence-update-9-october-2026),
-and the state after the pre-publication review in
-[Evidence update: 10 October 2026](#evidence-update-10-october-2026).
+the state after the pre-publication review in
+[Evidence update: 10 October 2026](#evidence-update-10-october-2026),
+and the publication-day controls in
+[Evidence update: 11 October 2026](#evidence-update-11-october-2026).
 Everything else in this document is the 7 October local evidence
 unless it says otherwise.
 
@@ -29,6 +31,17 @@ no check is required for merging, and no failure path has been
 exercised. Other controls are configured but not activated or verified
 while the repository is private, and some depend on other tickets. The gaps are listed under each item
 and collected in [Outstanding before publication](#outstanding-before-publication).
+
+**Update, 11 October 2026.** The repository is public; a ruleset on
+`main` requires the three checks with no bypass and blocks force-push
+and deletion; a pull request without the required `evaluation-gate`
+check was blocked; and private vulnerability reporting, secret
+scanning and push protection are enabled and read back. See
+[Evidence update: 11 October 2026](#evidence-update-11-october-2026).
+The standard is still not claimed as met in full: the threat model
+(AC-57) and static analysis (AC-54) are pending, there is no patching
+track record, no scanner failure path or push-protection block has
+been exercised, and there is no independent reviewer.
 
 ## What this document is
 
@@ -81,11 +94,11 @@ two series are different and a "Ticket N" must not be read as `AC-N`.
 
 | # | Minimum-standard item | Status |
 |---|---|---|
-| 1 | Named owner and maintenance plan | Verified in documents; `CODEOWNERS` pending on 7 October, on `main` since 9 October; required code-owner review deferred (AC-35 open) |
-| 2 | Security contact, intake route and triage process | Policy written; **intake route not active**, pending publication |
-| 3 | No secrets or sensitive operational detail, with enforced controls | Scans clean locally (7 and 10 October), in CI on every push to `main` since 8 October, and on schedule (9 and 10 October); retained Actions logs reviewed on 10 October; enforcement pending (required check, push protection) |
+| 1 | Named owner and maintenance plan | Verified in documents; `CODEOWNERS` pending on 7 October, on `main` since 9 October; required code-owner review deferred (sole owner); enforcement activated and proved on 11 October (AC-35) |
+| 2 | Security contact, intake route and triage process | Policy written; intake route not active on 7 October; enabled on 11 October and read back; notification and triage paths not exercised |
+| 3 | No secrets or sensitive operational detail, with enforced controls | Scans clean locally (7 and 10 October), in CI on every push to `main` since 8 October, and on schedule (9 and 10 October); retained Actions logs reviewed on 10 October; required `secret-scan` check and push protection active since 11 October; failure paths not exercised |
 | 4 | Secure-by-design baseline | Partial evidence; threat model pending (AC-57). The AC-36, AC-37 and AC-38 defects were open on 7 October. AC-36 was fixed on 9 October (pull request #10), AC-37 on 9 October (pull request #11, merged), and AC-38 on 10 October (see the [10 October update](#evidence-update-10-october-2026)) |
-| 5 | Automated hygiene | Dependabot alerts and security updates enabled, 0 open alerts on 10 October; Dependabot version updates active (two update pull requests merged on 8 October); scanning workflow running on pushes to `main` and on schedule; trunk protections unverified and unenforced (AC-35) |
+| 5 | Automated hygiene | Dependabot alerts and security updates enabled, 0 open alerts on 10 October; Dependabot version updates active (two update pull requests merged on 8 October); scanning workflow running on pushes to `main` and on schedule; trunk protections unverified on 7 October, active and read back on 11 October: force-push and deletion blocked, three checks required, no bypass (AC-35) |
 | 6 | Patching expectations and ability to demonstrate them | Targets written; no track record yet |
 | 7 | Safe posture for unmaintained code | Process verified in documents; deployed-service part excluded |
 
@@ -122,15 +135,17 @@ is a real limit on resilience and is stated in both documents.
 |---|---|---|---|---|
 | Named security contact | [SECURITY.md](../SECURITY.md#security-owner) | Susana | Verified | None |
 | Reporting instructions and sanitised report contents | [SECURITY.md](../SECURITY.md#reporting-a-vulnerability) | Susana | Verified as a document | None |
-| Private intake route: GitHub private vulnerability reporting | `GET /repos/SusanaCodes/agenttrail/private-vulnerability-reporting` returned HTTP 404 on 7 October 2026 | Susana | **Pending. Not active** | Publication steps P1 and P2 |
-| Monitored route: maintainer receives notifications | Not testable until the route is enabled | Susana | Pending | Publication step P2 |
+| Private intake route: GitHub private vulnerability reporting | `GET /repos/SusanaCodes/agenttrail/private-vulnerability-reporting` returned HTTP 404 on 7 October 2026. Enabled on 11 October 2026 and read back `enabled: true`; see the [11 October update](#evidence-update-11-october-2026) | Susana | Enabled and read back on 11 October. Not exercised | None. No test report has been submitted |
+| Monitored route: maintainer receives notifications | Not testable until the route is enabled. Since 11 October the route is enabled; no report has been submitted, and the maintainer's watch setting was not read back (the token used lacks the scope) | Susana | Pending. Unexercised | Accrues with the first report |
 | Defined triage process and targets | [SECURITY.md](../SECURITY.md#response-targets) | Susana | Verified as a document | None |
 
 GitHub offers private vulnerability reporting on public repositories
 only. While the repository is private there is **no operational
 private disclosure route**, and nothing here claims the route or its
 notifications work. The repository's visibility was not changed and no
-test report was submitted for this assessment.
+test report was submitted for this assessment. Update, 11 October
+2026: the repository is public and the route is enabled; the paragraph
+above describes the assessed state.
 
 A GitHub-hosted route was chosen over a mailbox so that no personal
 email address is published. That is an implementation choice; the
@@ -149,8 +164,8 @@ guidance gives a monitored mailbox only as an example.
 | Secret scan of full Git history, all refs | [Refreshed scan](#refreshed-secret-and-history-review) below: no leaks | Susana | Verified locally on the assessment date | Repeat at the final commit before publication (AC-53) |
 | Secret scan of the working tree including this ticket's files | Same section: no leaks | Susana | Verified locally | Same |
 | Continuing secret scanning in CI, redacted output | `secret-scan` job in [security-hygiene.yml](../.github/workflows/security-hygiene.yml); [8 October run](#evidence-update-8-october-2026) | Susana | Ran once on a pull request: pass. Not yet running on `main` or on schedule, so not yet continuing | Step M1 |
-| Enforced control: scan required before merge | None established. The settings could not be read ([settings](#repository-settings-read-on-7-october-2026)) | Susana | Pending. Unverified and unenforced | Step P4, with AC-35 |
-| Enforced control: GitHub secret scanning and push protection | `security_and_analysis` returned `null` on 7 October 2026 | Susana | Pending | Step P3 |
+| Enforced control: scan required before merge | None established on 7 October. The settings could not be read ([settings](#repository-settings-read-on-7-october-2026)). Since 11 October 2026 the `main-protection` ruleset requires the `secret-scan` and `dependency-audit` checks; see the [11 October update](#evidence-update-11-october-2026) | Susana | Verified as a setting on 11 October. The failure path is not exercised | None for the setting; AC-54 for proof by seeded violation |
+| Enforced control: GitHub secret scanning and push protection | `security_and_analysis` returned `null` on 7 October 2026. Enabled on 11 October 2026 and read back `enabled` for both; see the [11 October update](#evidence-update-11-october-2026) | Susana | Verified as settings on 11 October. No blocked push has been observed | None for the settings |
 | Personal data in committed record data | Redaction gate, [redaction-gate.md](redaction-gate.md); PASS on the assessment date | Susana | Verified, with a known defect | AC-37 (gate bypass), AC-39 (manual sweep) |
 | Environment-specific hostnames, IP ranges, admin endpoints | September review, [pre-publication-safety-review.md](pre-publication-safety-review.md), historical; no infrastructure exists to describe | Susana | Verified historically; not re-reviewed by hand | AC-39 sweep; AC-53 final check |
 | Security thresholds in the repository | The gate policy values are published on purpose | Susana | Excluded | See below |
@@ -169,7 +184,9 @@ false positives to explain.
 **Limit.** Automated scanning reduces risk. It does not prove the
 absence of secrets or personal data. The CI scan detects a committed
 secret after the commit exists on GitHub; only push protection (step
-P3) can stop the push itself.
+P3) can stop the push itself. Push protection has been enabled since
+11 October 2026; no push containing a secret has been attempted, so
+its block has not been observed.
 
 ### 4. Secure-by-design baseline
 
@@ -221,8 +238,8 @@ assurance of the architecture.
 | Vulnerability scanning: pip-audit on all three locks, on pull requests, pushes to `main` and daily | `dependency-audit` job in [security-hygiene.yml](../.github/workflows/security-hygiene.yml); run locally on ARM on 7 October, see [evidence](#dependency-audit-evidence-for-ac-47); [8 October run](#evidence-update-8-october-2026) | Susana | Ran once on a pull request: pass. Push and schedule triggers not yet exercised | Step M1 |
 | Secret scanning: Gitleaks, full history and tree, redacted | `secret-scan` job in the same workflow; run locally with the macOS build on 7 October; [8 October run](#evidence-update-8-october-2026) | Susana | Ran once on a pull request: pass. Push and schedule triggers not yet exercised | Step M1 |
 | Scanning kept apart from the intentionally failing `v2` demonstration | Separate workflow file; `ci-gate.yml` unchanged | Susana | Verified | None |
-| Trunk protection: prevent force-push and deletion on `main` | None. The rulesets and branch-protection endpoints both refused the read with HTTP 403 on 7 October 2026 ([settings](#repository-settings-read-on-7-october-2026)) | Susana | **Pending. Unverified and unenforced** | Step P4, with AC-35 |
-| Trunk protection: required CI checks | None, for the same reason. `evaluation-gate` is AC-35's; `dependency-audit` and `secret-scan` are added by this ticket | Susana | **Pending. Unverified and unenforced** | AC-35 and step P4 |
+| Trunk protection: prevent force-push and deletion on `main` | None on 7 October: the rulesets and branch-protection endpoints both refused the read with HTTP 403 ([settings](#repository-settings-read-on-7-october-2026)). Since 11 October 2026: ruleset `main-protection` with `deletion` and `non_fast_forward` rules, no bypass actors, read back from the rules endpoint; see the [11 October update](#evidence-update-11-october-2026) | Susana | Verified on 11 October | None |
+| Trunk protection: required CI checks | None on 7 October, for the same reason. `evaluation-gate` is AC-35's; `dependency-audit` and `secret-scan` are added by this ticket. Since 11 October 2026 the ruleset requires all three, each pinned to GitHub Actions, and [pull request #16](https://github.com/SusanaCodes/agenttrail/pull/16) without `evaluation-gate` was blocked; see the [11 October update](#evidence-update-11-october-2026) | Susana | Verified on 11 October | None. A required check does not show that the job still enforces anything |
 | Static analysis of the application code | None | Susana | Pending | AC-54 |
 
 Workflow YAML does not enforce anything by itself. Until a ruleset
@@ -230,7 +247,9 @@ requires the checks, a red `security-hygiene` run is advisory. The
 schedule trigger only runs from the default branch, so "daily" starts
 after merge. The workflow is designed to fail on a finding or a
 scanner error. Its one run so far passed, so that failure path has not
-been exercised.
+been exercised. Update, 11 October 2026: a ruleset now requires both
+checks, so a red run blocks a merge; the failure path itself is still
+unexercised.
 
 `security-hygiene.yml` and `ci-gate.yml` were checked on 7 October 2026
 with actionlint 1.7.12 and its ShellCheck 0.11.0 integration (both
@@ -550,6 +569,41 @@ Later on 10 October 2026, after the section above was written:
 | AC-48 exact-commit verification | Recorded on AC-48 for `53463f8` on 10 October 2026 (442 tests; redaction PASS; `v1` PASS 12/12; `v2` FAIL exit `1`, 9/12; 54-commit history scan and tree scan, no leaks; retained Actions logs reviewed). Repeated on each later candidate, including the commit that adds this section; the result for the final commit is on the ticket |
 | Steps P1 to P5, enforcement (AC-35) | Unchanged: not done, not verified. They follow the visibility change in the sequence recorded on AC-53 |
 
+## Evidence update: 11 October 2026
+
+This section records the settings changed and read back on 11 October
+2026, after the maintainer's publication decision and the AC-48 record
+for `7406f83a17208bee1e1e3eee063a02c694cba17c`. Every read-back was
+made with the GitHub CLI as the repository owner unless it says
+signed-out. Times are UTC.
+
+| Item | Result |
+|---|---|
+| Visibility | Changed from private to public at 09:53 with `gh repo edit --visibility public`. Read back `visibility: public`, `private: false` |
+| Mechanism for `main` | Repository ruleset `main-protection` (id 24875447), target branch, condition `refs/heads/main`, created at 09:54. Classic branch protection is not used; its endpoint reads `Branch not protected`. The branch summary reads `protected: true` |
+| Bypass | `bypass_actors` empty; `current_user_can_bypass: never` when read by the repository administrator. No administrator bypass |
+| Force-push and deletion | Rules `non_fast_forward` and `deletion` present in the effective rules read from `GET /repos/SusanaCodes/agenttrail/rules/branches/main` |
+| Required checks | `evaluation-gate`, `dependency-audit` and `secret-scan`, each with `integration_id` 15368 (GitHub Actions), `strict_required_status_checks_policy: true`, `do_not_enforce_on_create: false` |
+| Pull request rule | Required: 0 approvals, no code-owner review, no required reviewers, no last-push approval, no thread resolution. Mandatory code-owner approval stays deferred: the sole author cannot approve her own pull request. GitHub's default `require_extra_approval_for_unattributed_changes: true` was left as read back |
+| Missing-check proof | [pull request #16](https://github.com/SusanaCodes/agenttrail/pull/16), opened 09:55, head `f167b8495b1b36197172725f7b79914333b6eaf9` on base `7406f83`. The branch removed the `evaluation-gate` job and the dependent `deployment-demo` job, kept one no-op job `throwaway-noop`, and created no check named `evaluation-gate`. Check runs on the head: `dependency-audit`, `secret-scan` and `throwaway-noop`, all successful; no `evaluation-gate` run. GitHub reported `mergeable: true`, `mergeable_state: blocked`, `mergeStateStatus: BLOCKED`, rollup `SUCCESS`, `reviewDecision: null`, with the two present required checks satisfied. The absent required `evaluation-gate` check was the only unmet rule. Not merged; closed at 09:58 and the branch deleted |
+| Private vulnerability reporting (P1, P2) | `PUT` returned HTTP 204; `GET` read back `enabled: true` |
+| Secret scanning and push protection (P3) | `PATCH` of `security_and_analysis`; read back `secret_scanning: enabled`, `secret_scanning_push_protection: enabled`. `secret_scanning_non_provider_patterns` and `secret_scanning_validity_checks` read back `disabled` and were not changed. 0 secret-scanning alerts listed |
+| Dependabot | Unchanged: alerts HTTP 204, security updates `enabled: true`, `paused: false` |
+| Signed-out routes | Repository root, `security`, `security/policy`, `security/advisories`, the project manual (the website URL) and Actions all HTTP 200. The Advisories page carries the "Report a vulnerability" link. `security/advisories/new` redirects a signed-out reader to login, as the form needs a GitHub account. Raw `SECURITY.md` HTTP 200. 0 advisories listed |
+| Manual `v2` demonstration | [run 38130274254](https://github.com/SusanaCodes/agenttrail/actions/runs/38130274254), `workflow_dispatch` with `agent_version=v2` on `main` at `7406f83`, started 09:58. `evaluation-gate` failed at the `Run CI gate` step after the unit tests and redaction gate passed: `measured_rate=0.7500`, 9 of 12, exit `1`. `deployment-demo` skipped. Run page readable signed out |
+| Open pull requests during the activation | None. Merges were frozen until the proof was recorded |
+
+What this update does not establish: that a report submitted through
+the private route reaches the maintainer, since none was submitted;
+that push protection blocks a push, since none containing a secret was
+attempted; that either scanning job fails on a finding, which is still
+unexercised and belongs to AC-54; that the `evaluation-gate` job still
+enforces the safety property, which a required check cannot show; or
+independent review, which a sole-owner repository does not have. The
+change set that adds this section is itself a new commit, so final
+verification of the published commit is owed again under AC-48 and is
+recorded on that ticket.
+
 ## Refreshed secret and history review
 
 The September 2026
@@ -621,7 +675,8 @@ read `security_and_analysis: null`.
 
 The website URL is the real location of the project manual. It returns
 HTTP 404 to a signed-out reader while the repository is private;
-public access is verified at step P5.
+public access is verified at step P5. Update, 11 October 2026: HTTP
+200 for a signed-out reader.
 
 ## Guidance requirements and additional choices
 
@@ -653,11 +708,13 @@ security blockers owned by other tickets.
 
 ### At publication
 
-These have not been done. Private vulnerability reporting is documented
-by GitHub for public repositories; the ruleset and secret-scanning
-steps were not attempted, so their availability is unconfirmed.
-Visibility is changed by the owner, not by tooling. Endpoints were checked against
-the GitHub REST documentation on 7 October 2026.
+These had not been done on 7 October. Private vulnerability reporting
+is documented by GitHub for public repositories; the ruleset and
+secret-scanning steps were not attempted then, so their availability
+was unconfirmed. Visibility is changed by the owner, not by tooling.
+Endpoints were checked against the GitHub REST documentation on 7
+October 2026. The steps are kept as written; their results on 11
+October 2026 follow the table.
 
 | Step | Action |
 |---|---|
@@ -667,17 +724,29 @@ the GitHub REST documentation on 7 October 2026.
 | P4 | With AC-35: a ruleset on `main` that blocks deletion and force-push (`deletion`, `non_fast_forward`) and requires the `evaluation-gate`, `dependency-audit` and `secret-scan` checks. Read back with `gh api repos/SusanaCodes/agenttrail/rules/branches/main`, and prove it with AC-35's blocked throwaway pull request |
 | P5 | Confirm the website URL and the README links load for a signed-out reader |
 
+Results, 11 October 2026 (detail in the
+[11 October update](#evidence-update-11-october-2026)): P1 done,
+HTTP 204. P2 done in part: read back `enabled: true`; the "Report a
+vulnerability" link is shown on the Advisories page to a signed-out
+reader, which is not the second-account check the step describes; the
+maintainer's watch setting was not read back because the token used
+lacks the scope; the "activation pending" notice is replaced in the
+change set that adds this. P3 done: both read back `enabled`. P4 done:
+the ruleset requires all three checks and is proved by pull request
+#16. P5 done in part: the website URL returns HTTP 200 signed out; the
+README link check belongs to the public presentation work on AC-53.
+
 ### Owned by other tickets
 
 | Gap | Ticket |
 |---|---|
-| Required check, bypass off and the blocked throwaway pull request. `CODEOWNERS` was added on 9 October 2026; mandatory code-owner approval is deferred | AC-35 |
+| Required check, bypass off and the blocked throwaway pull request: done on 11 October 2026 (ruleset `main-protection`, [pull request #16](https://github.com/SusanaCodes/agenttrail/pull/16) closed unmerged). `CODEOWNERS` was added on 9 October 2026; mandatory code-owner approval stays deferred | AC-35 |
 | Rejected values in exception messages. Fixed on 9 October 2026 | AC-36 |
 | Redaction gate bypass. Fixed on 9 October 2026 in pull request #11, merged as `fa28536` | AC-37 |
 | Malformed audit encoding exit code. Fixed on 10 October 2026, see the [10 October update](#evidence-update-10-october-2026) | AC-38 |
 | Manual redaction sweep of `docs/`, `tests/`, `showcase/`. Done on 10 October 2026: expanded sweep merged in pull request #14, accepted with every retained detector vector reviewed and the scanner's exit codes recorded as found | AC-39 |
 | Consolidated security assessment, which takes the dependency evidence above | AC-47 |
-| Final full-history scan and visibility change | AC-53 |
+| Visibility change, made on 11 October 2026; final verification of the published commit, public presentation and release | AC-53 |
 | Static analysis, SBOM and enforced scanning proven by seeded violations | AC-54 |
 | Threat model | AC-57 |
 | Provenance and publishing rights | No written determination. Maintainer decision to publish recorded on 10 October 2026 on AC-34, AC-47, AC-51 and AC-53; see [Licence and provenance](#licence-and-provenance) |
