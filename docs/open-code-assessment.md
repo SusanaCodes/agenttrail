@@ -113,7 +113,7 @@ two series are different and a "Ticket N" must not be read as `AC-N`.
 
 | Control and scope | Evidence | Owner | Status | Remaining step |
 |---|---|---|---|---|
-| Named maintainer accountable for the repository and its dependencies | [README](../README.md#maintenance-security-and-dependencies), [maintenance.md](maintenance.md#maintainer), [SECURITY.md](../SECURITY.md#security-owner) | Susana | Verified | None |
+| Named maintainer accountable for the repository and its dependencies | [README](../README.md#maintenance-security-and-licence), [maintenance.md](maintenance.md#maintainer), [SECURITY.md](../SECURITY.md#security-owner) | Susana | Verified | None |
 | Support duration: head of `main` only, next review 7 January 2027, then three-monthly | [maintenance.md](maintenance.md#support-scope-and-review-date) | Susana | Verified | Renew or retire at each review |
 | Dependency ownership and review frequency | [maintenance.md](maintenance.md#dependencies) | Susana | Verified | None |
 | Handover arrangements | [maintenance.md](maintenance.md#handover) | Susana | Verified | None |
@@ -332,9 +332,17 @@ records how the project was built: as a solo final project on a
 training programme, on personal resources and accounts, with part of
 the build done in allocated working hours. It does not contain a
 written determination of who owns the copyright or who may license the
-work. A related ticket records that the programme was sent a courtesy
-notice of intended publication, and states that any reply would not
-settle an employment or intellectual-property position.
+work. [AC-26](https://thesreflow.atlassian.net/browse/AC-26?focusedCommentId=13188)
+records a courtesy email sent to Megan at GDS on 10 September 2026.
+The ticket records sending the notice, not the correspondence itself,
+a reply, employer approval or an ownership determination. Any
+programme reply would not by itself settle an employment or
+intellectual-property position. AC-26 is complete; no further email,
+reply or programme approval is required by that ticket. The
+intended-publication wording in
+that September ticket is historical; the later publication decision
+is recorded below, and the repository was made public on 11 October
+2026.
 
 None of that is an ownership determination, and none is made here.
 Neutral wording in the copyright line and the authorship recorded in

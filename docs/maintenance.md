@@ -20,8 +20,13 @@ Maintenance responsibility is not a statement about copyright. The
 copyright line is in [LICENSE](../LICENSE), and its provenance position
 is recorded in the open-code assessment.
 
-A `CODEOWNERS` file and required code-owner review are not in place
-yet. They belong to ticket AC-35.
+[`CODEOWNERS`](../.github/CODEOWNERS) is present and assigns the
+`agenttrail/`, `data/`, `fixtures/`, `tests/` and `.github/` paths to
+`@SusanaCodes` (AC-35). It records file ownership, not independent
+approval. Required code-owner approval remains deferred: the sole
+author cannot approve her own pull request. Required CI checks are
+configured separately in the `main-protection` ruleset, as described
+below.
 
 ## Support scope and review date
 
