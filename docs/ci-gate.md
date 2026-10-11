@@ -3,6 +3,12 @@
 AgentTrail detects tested routing regressions recorded in the audit
 trail for the selected fixture snapshot.
 
+This is the gate for the bundled fictional case-review example. Its
+escalation-rate property is an example of a workflow-specific
+expectation, not a universal measure of agent safety. Reusing the
+pattern requires choosing and testing properties for the new workflow;
+see [Adapting AgentTrail](adapting-agenttrail.md).
+
 The gate runs the Ticket 5 evaluation harness and applies a
 version-controlled policy to its result. Its output is a verdict and an
 exit code, with these limits:

@@ -1,5 +1,11 @@
 # Behavioural evaluation harness (Ticket 5)
 
+This harness implements the reusable idea of scoring persisted agent
+decisions against explicit expectations. The current labels, routing
+metrics and input contract belong to the bundled fictional case-review
+example; they need adaptation for another workflow. See
+[Adapting AgentTrail](adapting-agenttrail.md).
+
 Replays every labelled golden case through the production decision agent
 using recorded Bedrock fixtures, persists each decision through the
 audited execution path, then reopens the audit trail and scores the
