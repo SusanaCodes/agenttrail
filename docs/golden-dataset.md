@@ -4,6 +4,12 @@
 
 ## This is synthetic evaluation data
 
+This dataset belongs to AgentTrail's bundled fictional case-review
+example. Its fields and labels are specific to that example, not a
+universal decision schema. Other workflows need their own labelled
+cases and evaluation properties; see
+[Adapting AgentTrail](adapting-agenttrail.md).
+
 Every case, label, and rule in this dataset is **synthetic evaluation data
 invented for testing AgentTrail's routing behaviour. It does not represent,
 approximate, or implement real UK benefit policy** and must never be used as

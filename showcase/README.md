@@ -6,6 +6,12 @@ working software is the centrepiece; this package frames and
 demonstrates it without changing it — no application behaviour, test,
 threshold, or safety control was modified for the showcase.
 
+For current readers: the fictional benefit-style cases are the bundled
+worked example of a reusable audit-and-evaluation pattern, not a real
+service or benefit policy. Other workflows require adaptation; see the
+[adaptation guide](../docs/adapting-agenttrail.md). The deck and its
+word-for-word content remain the record of the September showcase.
+
 The communication goal — the one thing assessors should remember:
 **AgentTrail detects tested routing regressions recorded in the audit
 trail for the selected fixture snapshot.** Fixture responses are not

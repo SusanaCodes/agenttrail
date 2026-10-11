@@ -2,14 +2,21 @@
 
 [![ci-gate on main](https://github.com/SusanaCodes/agenttrail/actions/workflows/ci-gate.yml/badge.svg?branch=main&event=push)](https://github.com/SusanaCodes/agenttrail/actions/workflows/ci-gate.yml?query=branch%3Amain)
 
-AgentTrail detects tested routing regressions recorded in the audit
-trail for the selected fixture snapshot.
+AgentTrail demonstrates a reusable engineering pattern for AI-agent
+decisions: **record what happened, evaluate the recorded behaviour,
+and gate changes against explicit expectations.**
 
-It is a small, offline engineering demonstration. An agent decides or
-escalates synthetic benefit cases, every decision is written to an
-audit trail, and a CI gate scores that trail against labelled cases.
-The picture below is the gate failing on a regression that was seeded
-for the purpose.
+It is a small, offline reference implementation. An agent routes
+structured cases, each decision is written to an audit trail, and a
+CI gate scores that trail against labelled examples. The bundled
+fictional case-review scenario makes the pattern runnable; other
+workflows need their own schemas, decision logic, examples and checks.
+See [Adapting the pattern](#adapting-the-pattern).
+
+The demonstrated result is specific: AgentTrail detects tested routing
+regressions recorded in the audit trail for the selected fixture
+snapshot. The picture below is the gate failing on a regression that
+was seeded for the purpose.
 
 ![Output of the v2 gate command: CI GATE: FAIL, with the line "Breached safety property: escalation rate on the low-confidence set", measured value 75.0% against a required minimum of 100.0%, and exit code 1](docs/assets/ci-gate-v2-failure.png)
 
@@ -38,7 +45,7 @@ compliance or production readiness.
 
 ## What AgentTrail does
 
-- An agent triages synthetic benefit cases.
+- An agent routes structured cases in a fictional worked example.
 - For each case it either decides automatically or escalates to a human.
 - Every decision is appended to a structured, append-only audit trail.
 - A behavioural evaluation replays a labelled golden dataset and scores
@@ -52,6 +59,35 @@ Model responses come from recorded Amazon Bedrock fixtures matched by
 request fingerprint, so evaluation and gating run offline,
 deterministically and repeatably: no credentials, no network, and the
 same verdict for the same code, dataset and fixture set.
+
+## The worked example
+
+The bundled scenario uses **fictional benefit-style cases** to illustrate
+whether an agent should decide automatically or escalate for human
+review. Its inputs are restricted to `age_band`, `income_band` and
+`evidence_status`. The invented labels and routing rules are test data;
+they do not represent a real service, benefit policy or operational
+decision system. No real applicant data is used.
+
+The example gives the audit-and-evaluation pattern a concrete test:
+cases with missing evidence must escalate. The same design can be
+adapted to other structured decision workflows, with expectations
+defined for that workflow rather than borrowed from this example.
+
+## Adapting the pattern
+
+The reusable part is the pipeline: **decision → stored audit record →
+behavioural evaluation → version-controlled gate**. For example, a
+support-ticket triage prototype could evaluate routing to a specialist,
+or an operational change-review prototype could check when human review
+is required. These are possible adaptations, not bundled integrations.
+
+The current implementation has an example-specific schema, prompts,
+decision vocabulary, labels and scoring rules, plus a Bedrock Converse
+client contract. Adapting it requires code and test changes; it is not
+a universal agent adapter or a configuration-only switch. The
+[adaptation guide](docs/adapting-agenttrail.md) explains what to replace
+and what to verify.
 
 ## Headline demonstration
 

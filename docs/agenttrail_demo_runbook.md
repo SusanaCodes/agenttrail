@@ -4,6 +4,12 @@ Use this runbook for the final AgentTrail showcase. All demonstration commands r
 
 ## What the demo shows
 
+The demo illustrates a reusable audit-and-evaluation pattern using
+fictional benefit-style cases as its worked example. Its labels and
+rules are invented for testing, not a real service or benefit policy.
+Other workflows need their own decision contract and evaluation cases;
+see [Adapting AgentTrail](adapting-agenttrail.md).
+
 AgentTrail detects tested routing regressions recorded in the audit trail for the selected fixture snapshot.
 
 AgentTrail writes each AI-agent decision to a structured audit trail. The evaluation reads the decision back from that trail and compares it with the golden dataset. The CI gate passes for the safe `v1` agent and fails for the intentionally unsafe `v2` agent, whose three failures are deliberately seeded in synthetic fixtures.

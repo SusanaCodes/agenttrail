@@ -26,15 +26,22 @@ in the [decision log](decision-log.md).
 
 ## 1. Overview
 
-AgentTrail is a small, complete demonstration of how to make one
-AI-agent decision path **auditable, evaluable, and safe to change**. An
-agent triages synthetic benefit cases — it either makes an automated
-decision or escalates the case to a human — and every decision it makes
-is recorded in a structured, append-only audit trail. A deterministic
-evaluation harness replays a labelled dataset through the agent, scores
-what was actually written to the trail, and a CI gate fails when that
-audited routing regresses on the tested cases for the selected fixture
-snapshot.
+AgentTrail is a small reference implementation of a reusable pattern:
+**record an AI-agent decision, evaluate the recorded behaviour, and
+gate changes against explicit expectations**. A deterministic evaluation
+harness replays a labelled dataset through the audited decision path,
+scores what was actually written to the trail, and a CI gate fails when
+that audited routing regresses on the tested cases for the selected
+fixture snapshot.
+
+The bundled worked example routes fictional benefit-style cases: decide
+automatically or escalate for human review. Its inputs, labels and rules
+are invented for testing, not a real service or benefit policy. They
+make the pattern concrete rather than defining its only possible use.
+Other workflows require their own schemas, decision logic, labelled
+cases and checks, and a compatible model client. The current code is
+specific to this example; the [adaptation guide](adapting-agenttrail.md)
+maps the changes needed to reuse the pattern.
 
 **The production problem it addresses.** When an LLM-backed agent makes
 decisions that affect people, three things routinely go wrong:

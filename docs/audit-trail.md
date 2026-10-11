@@ -2,6 +2,11 @@
 
 **Schema:** `data/audit_record.schema.json` — **Prompt version: 1.0.0**
 
+The record schema below is for the bundled fictional case-review
+example. Recording decisions and evaluating the stored records is the
+reusable pattern; its case fields and rationale templates must be
+adapted for another workflow. See [Adapting AgentTrail](adapting-agenttrail.md).
+
 Each successful audited decision (`agenttrail.audit.decide_case_audited`)
 appends exactly one JSON object on one line to an append-only JSONL file.
 This record is a structured audit artefact designed to support Article 12

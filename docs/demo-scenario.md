@@ -1,5 +1,11 @@
 # Demo scenario: v1 green, v2 red (Ticket 9)
 
+The fictional benefit-style cases are a worked example of the reusable
+audit-and-evaluation pattern. They do not represent a real service or
+benefit policy. This document describes that example's tested routing
+behaviour; [Adapting AgentTrail](adapting-agenttrail.md) explains the
+changes needed for other workflows.
+
 A staged demonstration that the CI safety gate actually blocks an
 unsafe agent change. Two explicitly selectable agent versions run
 through the identical pipeline — golden dataset, deterministic fixture
