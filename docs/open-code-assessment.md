@@ -332,8 +332,8 @@ records how the project was built: as a solo final project on a
 training programme, on personal resources and accounts, with part of
 the build done in allocated working hours. It does not contain a
 written determination of who owns the copyright or who may license the
-work. [AC-26](https://thesreflow.atlassian.net/browse/AC-26?focusedCommentId=13188)
-records a courtesy email sent to Megan at GDS on 10 September 2026.
+work. The publication record notes a courtesy email sent to the programme
+team on 10 September 2026.
 The ticket records sending the notice, not the correspondence itself,
 a reply, employer approval or an ownership determination. Any
 programme reply would not by itself settle an employment or
