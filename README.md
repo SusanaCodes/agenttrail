@@ -276,7 +276,6 @@ prototype on a best-efforts basis; only the head of `main` is maintained.
   historical evidence and does not cover later changes.
 
 **Provenance:** a solo training-programme project built on personal
-resources and accounts, partly in allocated working hours; the
-maintainer decided to publish on 10 October 2026, without a written
-ownership or publishing-rights determination, as recorded in the
-[full provenance statement](docs/open-code-assessment.md#licence-and-provenance).
+resources and accounts, partly in allocated working hours; publication
+followed the maintainer's 10 October 2026 decision, documented in the
+[full provenance record](docs/open-code-assessment.md#licence-and-provenance).
