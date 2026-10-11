@@ -1,106 +1,25 @@
-# CI gate: block deploy on escalation-rate regression (Ticket 6).
-#
-# Runs the full unit-test suite, the redaction gate, and then the
-# production CI-gate CLI, entirely offline: the project is
-# standard-library-only, every model response comes from committed
-# deterministic fixtures, and no AWS credentials, region, or network
-# access is needed or requested.
-#
-# Ticket 9 demo scenario: `workflow_dispatch` exposes an explicit
-# agent-version choice. Push and pull-request runs always evaluate the
-# safe v1 and stay green. Selecting v2 manually evaluates the
-# intentionally unsafe demo version, whose synthetic fixtures miss
-# low-confidence escalations, so the gate genuinely fails and the run
-# goes red — nothing marks that failure as successful, and the
-# downstream deployment-demo job is skipped because of `needs:`.
-# See docs/demo-scenario.md.
-#
-# `workflow_call` makes the gate reusable: a calling deployment
-# workflow must declare its deployment job with `needs:` on the gate
-# job, exactly as the deployment-demo job below does.
-#
-# This YAML alone cannot block merges. A GitHub branch protection rule
-# or ruleset on `main` must additionally require the `evaluation-gate`
-# status check (see docs/ci-gate.md).
+# THROWAWAY. AC-35 enforcement proof only. This branch must never be
+# merged. It removes the evaluation-gate job and the deployment-demo
+# job that depended on it, keeping the workflow valid with one
+# differently named no-op job, so that the only thing missing on the
+# pull request is the required evaluation-gate check.
 
 name: ci-gate
 
 on:
-  workflow_dispatch:
-    inputs:
-      agent_version:
-        description: >-
-          Agent version to evaluate (v2 is the intentionally unsafe
-          demo version and produces a red evaluation-gate run)
-        type: choice
-        options:
-          - v1
-          - v2
-        default: v1
   pull_request:
     branches: [main]
   push:
     branches: [main]
-  workflow_call: {}
-
 
 permissions:
   contents: read
 
 jobs:
-  evaluation-gate:
-    name: evaluation-gate
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    env:
-      PYTHONDONTWRITEBYTECODE: "1"
-      # The version under evaluation. Only workflow_dispatch can select
-      # a value, and only from the closed choice list above; every
-      # other trigger (push, pull_request, workflow_call) falls back to
-      # the safe v1. The value reaches the CLI through this environment
-      # variable, never through direct interpolation into shell text.
-      AGENT_VERSION: ${{ inputs.agent_version || 'v1' }}
-    steps:
-      - name: Check out repository
-        # actions/checkout v7.0.1
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
-        with:
-          persist-credentials: false
-
-      - name: Set up Python 3.12
-        # actions/setup-python v7.0.0
-        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
-        with:
-          python-version: "3.12"
-
-      - name: Run unit tests
-        run: python3 -m unittest discover -s tests -v
-
-      # Ticket 8 safety gate: deterministic backstop scan of the
-      # committed record data for NI numbers, UK postcodes, and NHS
-      # numbers (both fixture sets included). Offline, standard library
-      # only. Findings are reported as file:line + category with a
-      # [REDACTED] marker — the matched value never appears in CI logs.
-      # A detection exits 1 and fails this job; an unreadable target
-      # exits 2 and also fails it. Runs before the CI gate so the scan
-      # still executes on an intentionally red v2 demo run.
-      - name: Run redaction gate
-        run: python3 -m agenttrail.redaction_gate
-
-      - name: Run CI gate
-        run: python3 -m agenttrail.ci_gate --agent-version "$AGENT_VERSION"
-
-  # Minimal no-op stand-in proving the "deploy blocked" property: it
-  # can only run after a successful evaluation-gate, so a red v2 gate
-  # leaves it skipped. It deploys nothing and must never grow real
-  # deployment steps in this workflow.
-  deployment-demo:
-    name: deployment-demo
+  throwaway-noop:
+    name: throwaway-noop
     runs-on: ubuntu-latest
     timeout-minutes: 5
-    needs: evaluation-gate
     steps:
-      - name: Simulated deployment (no-op)
-        run: >-
-          echo "evaluation-gate passed — a real deployment would start
-          here. Nothing is deployed by this job."
+      - name: No-op
+        run: echo "throwaway no-op job; evaluation-gate is intentionally absent"
