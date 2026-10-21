@@ -4,13 +4,13 @@
 #
 #    pip-compile --allow-unsafe --generate-hashes --output-file=requirements-recording.txt requirements-recording.in
 #
-boto3==1.43.109 \
-    --hash=sha256:703a81baed186d31e27cf50065d25a9faeb704f009e7c56b0f002ca52a328896 \
-    --hash=sha256:c829bc3352e1e3922d8fe1db10b697182ac411b64ce5fc3acb0a06a29837417e
+boto3==1.43.114 \
+    --hash=sha256:be704857751564a5cf69c5bbaadbfa01c22806409815c73563db42fbffe583a2 \
+    --hash=sha256:d9cac2eb921ce674970cef1c9ad750f85ee3a846aedcf188d18368fb9eb6da23
     # via -r requirements-recording.in
-botocore==1.43.109 \
-    --hash=sha256:46b15bea4d942aaea6d7ab7c4b8a3a7290305064a3b41a6cb271cde9da3ba371 \
-    --hash=sha256:cd00edff465264fb448e36acc9ee29a828f738fff3746270b3f685a19194a5a6
+botocore==1.43.116 \
+    --hash=sha256:00b1fbfc1c024b56633538385628a1bbc7ab15aca0b5b53e5fe188841d96c8ce \
+    --hash=sha256:92f1efe8434183f08f91a61478925f5f8d23082024556f269f916477040e26f4
     # via
     #   boto3
     #   s3transfer
